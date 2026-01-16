@@ -1,0 +1,265 @@
+using System;
+using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace MilMap.Core.Tiles;
+
+/// <summary>
+/// Represents a single map tile with its coordinates and image data.
+/// </summary>
+public record TileData(int X, int Y, int Zoom, byte[] ImageData);
+
+/// <summary>
+/// Result of a tile fetch operation.
+/// </summary>
+public record TileFetchResult(
+    IReadOnlyList<TileData> Tiles,
+    IReadOnlyList<TileFetchError> Errors);
+
+/// <summary>
+/// Error information for a failed tile fetch.
+/// </summary>
+public record TileFetchError(int X, int Y, int Zoom, string ErrorMessage);
+
+/// <summary>
+/// Configuration options for the tile fetcher.
+/// </summary>
+public class TileFetcherOptions
+{
+    /// <summary>
+    /// Base URL for the tile server. Default is OpenStreetMap.
+    /// Use {z}, {x}, {y} placeholders for tile coordinates.
+    /// </summary>
+    public string TileServerUrl { get; set; } = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+    /// <summary>
+    /// User-Agent header for requests. Required by OSM tile usage policy.
+    /// </summary>
+    public string UserAgent { get; set; } = "MilMap/1.0 (https://github.com/milmap/milmap)";
+
+    /// <summary>
+    /// Maximum concurrent downloads. Default is 2 per OSM policy.
+    /// </summary>
+    public int MaxConcurrency { get; set; } = 2;
+
+    /// <summary>
+    /// Number of retry attempts for failed downloads.
+    /// </summary>
+    public int MaxRetries { get; set; } = 3;
+
+    /// <summary>
+    /// Delay between retry attempts in milliseconds.
+    /// </summary>
+    public int RetryDelayMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Request timeout in seconds.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 30;
+}
+
+/// <summary>
+/// Downloads OSM map tiles for a given bounding box.
+/// </summary>
+public class OsmTileFetcher : IDisposable
+{
+    private readonly HttpClient _httpClient;
+    private readonly TileFetcherOptions _options;
+    private bool _disposed;
+
+    public OsmTileFetcher() : this(new TileFetcherOptions()) { }
+
+    public OsmTileFetcher(TileFetcherOptions options)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+
+        var handler = new HttpClientHandler
+        {
+            AutomaticDecompression = System.Net.DecompressionMethods.All
+        };
+
+        _httpClient = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds)
+        };
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", options.UserAgent);
+    }
+
+    /// <summary>
+    /// Calculates the tile coordinates needed to cover a bounding box at a given zoom level.
+    /// </summary>
+    public static IReadOnlyList<(int X, int Y)> CalculateTileCoordinates(
+        double minLat, double maxLat, double minLon, double maxLon, int zoom)
+    {
+        ValidateBoundingBox(minLat, maxLat, minLon, maxLon);
+        ValidateZoomLevel(zoom);
+
+        int minTileX = LonToTileX(minLon, zoom);
+        int maxTileX = LonToTileX(maxLon, zoom);
+        int minTileY = LatToTileY(maxLat, zoom); // Note: Y is inverted
+        int maxTileY = LatToTileY(minLat, zoom);
+
+        var tiles = new List<(int X, int Y)>();
+        for (int x = minTileX; x <= maxTileX; x++)
+        {
+            for (int y = minTileY; y <= maxTileY; y++)
+            {
+                tiles.Add((x, y));
+            }
+        }
+
+        return tiles;
+    }
+
+    /// <summary>
+    /// Downloads all tiles for a bounding box at the specified zoom level.
+    /// </summary>
+    public async Task<TileFetchResult> FetchTilesAsync(
+        double minLat, double maxLat, double minLon, double maxLon, int zoom,
+        CancellationToken cancellationToken = default)
+    {
+        var coordinates = CalculateTileCoordinates(minLat, maxLat, minLon, maxLon, zoom);
+        return await FetchTilesAsync(coordinates, zoom, cancellationToken);
+    }
+
+    /// <summary>
+    /// Downloads tiles for the specified coordinates.
+    /// </summary>
+    public async Task<TileFetchResult> FetchTilesAsync(
+        IReadOnlyList<(int X, int Y)> coordinates, int zoom,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateZoomLevel(zoom);
+
+        var tiles = new ConcurrentBag<TileData>();
+        var errors = new ConcurrentBag<TileFetchError>();
+
+        using var semaphore = new SemaphoreSlim(_options.MaxConcurrency);
+
+        var tasks = coordinates.Select(async coord =>
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var result = await FetchSingleTileWithRetryAsync(coord.X, coord.Y, zoom, cancellationToken);
+                if (result != null)
+                {
+                    tiles.Add(result);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                errors.Add(new TileFetchError(coord.X, coord.Y, zoom, ex.Message));
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        return new TileFetchResult(tiles.ToList(), errors.ToList());
+    }
+
+    /// <summary>
+    /// Downloads a single tile.
+    /// </summary>
+    public async Task<TileData?> FetchTileAsync(int x, int y, int zoom,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateZoomLevel(zoom);
+        ValidateTileCoordinates(x, y, zoom);
+
+        string url = BuildTileUrl(x, y, zoom);
+
+        var response = await _httpClient.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        byte[] imageData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        return new TileData(x, y, zoom, imageData);
+    }
+
+    private async Task<TileData?> FetchSingleTileWithRetryAsync(int x, int y, int zoom,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastException = null;
+
+        for (int attempt = 0; attempt <= _options.MaxRetries; attempt++)
+        {
+            try
+            {
+                return await FetchTileAsync(x, y, zoom, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                if (attempt < _options.MaxRetries)
+                {
+                    await Task.Delay(_options.RetryDelayMs * (attempt + 1), cancellationToken);
+                }
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("Failed to fetch tile");
+    }
+
+    private string BuildTileUrl(int x, int y, int zoom)
+    {
+        return _options.TileServerUrl
+            .Replace("{z}", zoom.ToString())
+            .Replace("{x}", x.ToString())
+            .Replace("{y}", y.ToString());
+    }
+
+    private static int LonToTileX(double lon, int zoom)
+    {
+        int n = 1 << zoom;
+        int x = (int)((lon + 180.0) / 360.0 * n);
+        return Math.Clamp(x, 0, n - 1);
+    }
+
+    private static int LatToTileY(double lat, int zoom)
+    {
+        int n = 1 << zoom;
+        double latRad = lat * Math.PI / 180.0;
+        double y = (1.0 - Math.Log(Math.Tan(latRad) + 1.0 / Math.Cos(latRad)) / Math.PI) / 2.0 * n;
+        return Math.Clamp((int)y, 0, n - 1);
+    }
+
+    private static void ValidateBoundingBox(double minLat, double maxLat, double minLon, double maxLon)
+    {
+        if (minLat < -85.0511 || maxLat > 85.0511)
+            throw new ArgumentOutOfRangeException(nameof(minLat), "Latitude must be between -85.0511 and 85.0511 for Web Mercator");
+        if (minLat >= maxLat)
+            throw new ArgumentException("minLat must be less than maxLat");
+        if (minLon >= maxLon)
+            throw new ArgumentException("minLon must be less than maxLon");
+    }
+
+    private static void ValidateZoomLevel(int zoom)
+    {
+        if (zoom < 0 || zoom > 19)
+            throw new ArgumentOutOfRangeException(nameof(zoom), "Zoom level must be between 0 and 19");
+    }
+
+    private static void ValidateTileCoordinates(int x, int y, int zoom)
+    {
+        int maxTile = (1 << zoom) - 1;
+        if (x < 0 || x > maxTile)
+            throw new ArgumentOutOfRangeException(nameof(x), $"X coordinate must be between 0 and {maxTile} for zoom {zoom}");
+        if (y < 0 || y > maxTile)
+            throw new ArgumentOutOfRangeException(nameof(y), $"Y coordinate must be between 0 and {maxTile} for zoom {zoom}");
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _httpClient.Dispose();
+            _disposed = true;
+        }
+    }
+}

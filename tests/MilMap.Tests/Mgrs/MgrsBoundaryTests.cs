@@ -21,7 +21,7 @@ public class MgrsBoundaryTests
     }
 
     [Theory]
-    [InlineData("18T", 32.0, 40.0)] // T is 32-40°N
+    [InlineData("18T", 40.0, 48.0)] // T is 40-48°N
     [InlineData("18C", -80.0, -72.0)] // C is first band
     [InlineData("31X", 72.0, 84.0)] // X extends to 84
     public void GetBounds_ZoneBand_ReturnsCorrectLatitude(string mgrs, double expectedMinLat, double expectedMaxLat)
