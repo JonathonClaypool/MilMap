@@ -72,6 +72,11 @@ public static class CommandLineParser
             Description = "Directory for caching downloaded tiles"
         };
 
+        var configOption = new Option<FileInfo?>("--config")
+        {
+            Description = "Path to configuration file (YAML or JSON)"
+        };
+
         var rootCommand = new RootCommand("MilMap - Generate military-style topographic maps from OpenStreetMap data");
         rootCommand.Arguments.Add(outputArg);
         rootCommand.Options.Add(mgrsOption);
@@ -81,9 +86,11 @@ public static class CommandLineParser
         rootCommand.Options.Add(dpiOption);
         rootCommand.Options.Add(formatOption);
         rootCommand.Options.Add(cacheDirOption);
+        rootCommand.Options.Add(configOption);
 
-        // Add the installations subcommand
+        // Add subcommands
         rootCommand.Subcommands.Add(CreateInstallationsCommand());
+        rootCommand.Subcommands.Add(CreateConfigCommand());
 
         // Add examples to the description
         rootCommand.Description += @"
@@ -105,15 +112,42 @@ Examples:
     Search for installations matching 'Fort'
 
   milmap installations list --branch Army
-    List all Army installations";
+    List all Army installations
+
+  milmap config show
+    Show current configuration";
 
         // Add validation for mutually exclusive region options
         rootCommand.Validators.Add(result =>
         {
+            // Load config to check for defaults
+            var configPath = result.GetValue(configOption)?.FullName;
+            MilMapConfig? config = null;
+            if (configPath != null)
+            {
+                if (!ConfigLoader.TryLoadFromFile(configPath, out config))
+                {
+                    result.AddError($"Could not load configuration file: {configPath}");
+                    return;
+                }
+            }
+            else
+            {
+                config = ConfigLoader.Discover();
+            }
+
             int regionOptionsCount = 0;
             if (result.GetValue(mgrsOption) is not null) regionOptionsCount++;
             if (result.GetValue(boundsOption) is not null) regionOptionsCount++;
             if (result.GetValue(installationOption) is not null) regionOptionsCount++;
+            
+            // Also check config for defaults
+            if (config != null)
+            {
+                if (regionOptionsCount == 0 && config.Mgrs is not null) regionOptionsCount++;
+                if (regionOptionsCount == 0 && config.Bounds is not null) regionOptionsCount++;
+                if (regionOptionsCount == 0 && config.Installation is not null) regionOptionsCount++;
+            }
 
             if (regionOptionsCount == 0)
             {
@@ -127,6 +161,18 @@ Examples:
 
         rootCommand.SetAction(parseResult =>
         {
+            // Load configuration
+            var configPath = parseResult.GetValue(configOption)?.FullName;
+            MilMapConfig config;
+            if (configPath != null)
+            {
+                config = ConfigLoader.LoadFromFile(configPath);
+            }
+            else
+            {
+                config = ConfigLoader.DiscoverOrDefault();
+            }
+
             var options = new MapOptions
             {
                 OutputPath = parseResult.GetValue(outputArg)!.FullName,
@@ -138,6 +184,9 @@ Examples:
                 Format = parseResult.GetValue(formatOption),
                 CacheDir = parseResult.GetValue(cacheDirOption)?.FullName
             };
+
+            // Apply config defaults
+            options = config.ApplyTo(options);
 
             // Handle installation lookup with fuzzy matching
             if (options.Installation is not null)
@@ -369,6 +418,109 @@ Examples:
         Console.Error.WriteLine();
         Console.Error.WriteLine("Please be more specific or use the installation ID.");
         return null;
+    }
+
+    /// <summary>
+    /// Creates the config subcommand for managing configuration files.
+    /// </summary>
+    private static Command CreateConfigCommand()
+    {
+        var configCommand = new Command("config", "Manage configuration files");
+
+        // Show subcommand
+        var showCommand = new Command("show", "Show current configuration");
+        showCommand.SetAction(_ =>
+        {
+            var configPath = ConfigLoader.GetDiscoveredPath();
+            if (configPath == null)
+            {
+                Console.WriteLine("No configuration file found.");
+                Console.WriteLine();
+                Console.WriteLine("Searched locations:");
+                Console.WriteLine("  - Current directory and parent directories");
+                Console.WriteLine("  - Home directory (~/)");
+                Console.WriteLine("  - ~/.config/milmap/");
+                Console.WriteLine();
+                Console.WriteLine("Create a config file with: milmap config init");
+                return 0;
+            }
+
+            Console.WriteLine($"Configuration file: {configPath}");
+            Console.WriteLine();
+            
+            var config = ConfigLoader.LoadFromFile(configPath);
+            
+            if (config.Scale.HasValue)
+                Console.WriteLine($"  scale: {config.Scale}");
+            if (config.Dpi.HasValue)
+                Console.WriteLine($"  dpi: {config.Dpi}");
+            if (!string.IsNullOrEmpty(config.Format))
+                Console.WriteLine($"  format: {config.Format}");
+            if (!string.IsNullOrEmpty(config.CacheDir))
+                Console.WriteLine($"  cacheDir: {config.CacheDir}");
+            if (!string.IsNullOrEmpty(config.Mgrs))
+                Console.WriteLine($"  mgrs: {config.Mgrs}");
+            if (!string.IsNullOrEmpty(config.Bounds))
+                Console.WriteLine($"  bounds: {config.Bounds}");
+            if (!string.IsNullOrEmpty(config.Installation))
+                Console.WriteLine($"  installation: {config.Installation}");
+            if (!string.IsNullOrEmpty(config.OutputPath))
+                Console.WriteLine($"  outputPath: {config.OutputPath}");
+
+            return 0;
+        });
+
+        // Init subcommand
+        var formatOption = new Option<string>("--format", "-f")
+        {
+            Description = "Config file format (yaml or json)",
+            DefaultValueFactory = _ => "yaml"
+        };
+        var outputOption = new Option<string>("--output", "-o")
+        {
+            Description = "Output file path",
+            DefaultValueFactory = _ => "milmap.yaml"
+        };
+        
+        var initCommand = new Command("init", "Create a new configuration file");
+        initCommand.Options.Add(formatOption);
+        initCommand.Options.Add(outputOption);
+        initCommand.SetAction(parseResult =>
+        {
+            var format = parseResult.GetValue(formatOption)!;
+            var output = parseResult.GetValue(outputOption)!;
+            
+            if (File.Exists(output))
+            {
+                Console.Error.WriteLine($"Error: File already exists: {output}");
+                return 1;
+            }
+
+            var content = ConfigLoader.GenerateSample(format);
+            File.WriteAllText(output, content);
+            Console.WriteLine($"Created configuration file: {output}");
+            return 0;
+        });
+
+        // Path subcommand
+        var pathCommand = new Command("path", "Show path to discovered configuration file");
+        pathCommand.SetAction(_ =>
+        {
+            var configPath = ConfigLoader.GetDiscoveredPath();
+            if (configPath == null)
+            {
+                Console.Error.WriteLine("No configuration file found.");
+                return 1;
+            }
+            Console.WriteLine(configPath);
+            return 0;
+        });
+
+        configCommand.Subcommands.Add(showCommand);
+        configCommand.Subcommands.Add(initCommand);
+        configCommand.Subcommands.Add(pathCommand);
+
+        return configCommand;
     }
 
     /// <summary>
