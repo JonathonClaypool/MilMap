@@ -14,6 +14,11 @@ public readonly record struct BoundingBox(double MinLat, double MaxLat, double M
 }
 
 /// <summary>
+/// Represents a UTM zone with its longitude boundaries.
+/// </summary>
+public readonly record struct UtmZoneInfo(int Zone, double MinLon, double MaxLon);
+
+/// <summary>
 /// Calculates bounding boxes for MGRS grid references.
 /// </summary>
 public static class MgrsBoundary
@@ -260,5 +265,172 @@ public static class MgrsBoundary
         return isNorth
             ? new BoundingBox(84.0, 90.0, -180.0, 180.0)
             : new BoundingBox(-90.0, -80.0, -180.0, 180.0);
+    }
+
+    /// <summary>
+    /// Determines the UTM zone for a given longitude (standard zones only).
+    /// </summary>
+    public static int GetUtmZone(double longitude)
+    {
+        return (int)((longitude + 180) / 6) + 1;
+    }
+
+    /// <summary>
+    /// Determines the UTM zone considering special zones for Norway and Svalbard.
+    /// </summary>
+    public static int GetUtmZone(double latitude, double longitude)
+    {
+        // Handle special zones for Norway (zone 32V)
+        if (latitude >= 56.0 && latitude < 64.0 && longitude >= 3.0 && longitude < 12.0)
+            return 32;
+
+        // Handle special zones for Svalbard
+        if (latitude >= 72.0 && latitude < 84.0)
+        {
+            if (longitude >= 0.0 && longitude < 9.0) return 31;
+            if (longitude >= 9.0 && longitude < 21.0) return 33;
+            if (longitude >= 21.0 && longitude < 33.0) return 35;
+            if (longitude >= 33.0 && longitude < 42.0) return 37;
+        }
+
+        return GetUtmZone(longitude);
+    }
+
+    /// <summary>
+    /// Gets the longitude boundaries for a standard UTM zone.
+    /// </summary>
+    public static (double MinLon, double MaxLon) GetZoneLongitudeBounds(int zone)
+    {
+        if (zone < 1 || zone > 60)
+            throw new ArgumentOutOfRangeException(nameof(zone), zone, "Zone must be between 1 and 60");
+
+        double minLon = (zone - 1) * 6 - 180;
+        double maxLon = minLon + 6;
+        return (minLon, maxLon);
+    }
+
+    /// <summary>
+    /// Gets the central meridian longitude for a UTM zone.
+    /// </summary>
+    public static double GetZoneCentralMeridian(int zone)
+    {
+        if (zone < 1 || zone > 60)
+            throw new ArgumentOutOfRangeException(nameof(zone), zone, "Zone must be between 1 and 60");
+
+        return (zone - 1) * 6 - 180 + 3;
+    }
+
+    /// <summary>
+    /// Gets all UTM zones that a bounding box spans.
+    /// Returns zones in order from west to east.
+    /// </summary>
+    /// <param name="minLat">Minimum latitude</param>
+    /// <param name="maxLat">Maximum latitude</param>
+    /// <param name="minLon">Minimum longitude</param>
+    /// <param name="maxLon">Maximum longitude</param>
+    /// <returns>List of zone information including boundaries</returns>
+    public static List<UtmZoneInfo> GetZonesForBounds(double minLat, double maxLat, double minLon, double maxLon)
+    {
+        var zones = new List<UtmZoneInfo>();
+
+        // Handle polar regions
+        if (maxLat >= 84.0 || minLat < -80.0)
+        {
+            // Polar regions use UPS, not UTM zones
+            // Return empty or handle specially
+            if (minLat >= 84.0 || maxLat < -80.0)
+                return zones;
+        }
+
+        // Clamp to UTM latitude range
+        double effectiveMinLat = Math.Max(minLat, -80.0);
+        double effectiveMaxLat = Math.Min(maxLat, 84.0);
+
+        // Get starting and ending zones
+        int startZone = GetUtmZone(minLon);
+        int endZone = GetUtmZone(maxLon);
+
+        // Handle wrap-around at antimeridian
+        if (maxLon < minLon)
+        {
+            // Spans antimeridian - add zones from start to 60, then 1 to end
+            for (int z = startZone; z <= 60; z++)
+            {
+                AddZoneIfInBounds(zones, z, effectiveMinLat, effectiveMaxLat, minLon, 180.0);
+            }
+            for (int z = 1; z <= endZone; z++)
+            {
+                AddZoneIfInBounds(zones, z, effectiveMinLat, effectiveMaxLat, -180.0, maxLon);
+            }
+        }
+        else
+        {
+            // Normal case
+            for (int z = startZone; z <= endZone; z++)
+            {
+                var (zoneMinLon, zoneMaxLon) = GetZoneLongitudeBounds(z);
+                
+                // Clip zone bounds to the requested bounds
+                double clipMinLon = Math.Max(zoneMinLon, minLon);
+                double clipMaxLon = Math.Min(zoneMaxLon, maxLon);
+                
+                if (clipMinLon < clipMaxLon)
+                {
+                    zones.Add(new UtmZoneInfo(z, clipMinLon, clipMaxLon));
+                }
+            }
+        }
+
+        return zones;
+    }
+
+    private static void AddZoneIfInBounds(List<UtmZoneInfo> zones, int zone, 
+        double minLat, double maxLat, double minLon, double maxLon)
+    {
+        var (zoneMinLon, zoneMaxLon) = GetZoneLongitudeBounds(zone);
+        
+        double clipMinLon = Math.Max(zoneMinLon, minLon);
+        double clipMaxLon = Math.Min(zoneMaxLon, maxLon);
+        
+        if (clipMinLon < clipMaxLon)
+        {
+            zones.Add(new UtmZoneInfo(zone, clipMinLon, clipMaxLon));
+        }
+    }
+
+    /// <summary>
+    /// Checks if a bounding box spans multiple UTM zones.
+    /// </summary>
+    public static bool SpansMultipleZones(double minLon, double maxLon)
+    {
+        if (maxLon < minLon)
+            return true; // Spans antimeridian
+        
+        int startZone = GetUtmZone(minLon);
+        int endZone = GetUtmZone(maxLon);
+        return startZone != endZone;
+    }
+
+    /// <summary>
+    /// Gets the zone boundary longitude that falls within a given range.
+    /// Returns null if no boundary exists within the range.
+    /// </summary>
+    public static List<double> GetZoneBoundariesInRange(double minLon, double maxLon)
+    {
+        var boundaries = new List<double>();
+
+        int startZone = GetUtmZone(minLon);
+        int endZone = GetUtmZone(maxLon);
+
+        for (int z = startZone; z < endZone; z++)
+        {
+            double boundary = z * 6 - 180;
+            if (boundary > minLon && boundary < maxLon)
+            {
+                boundaries.Add(boundary);
+            }
+        }
+
+        return boundaries;
     }
 }

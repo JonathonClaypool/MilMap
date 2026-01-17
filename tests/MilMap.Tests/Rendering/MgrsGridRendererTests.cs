@@ -181,4 +181,77 @@ public class MgrsGridRendererTests
         var renderer = new MgrsGridRenderer(options);
         Assert.NotNull(renderer);
     }
+
+    // Cross-zone boundary tests
+
+    [Fact]
+    public void DrawGrid_CrossZoneBoundary_ProducesValidOutput()
+    {
+        using var baseMap = CreateTestBitmap();
+        var renderer = new MgrsGridRenderer();
+
+        // Area spanning zones 17 and 18 (boundary at -78°)
+        using var result = renderer.DrawGrid(baseMap, 40.0, 41.0, -80.0, -76.0);
+
+        Assert.NotNull(result);
+        Assert.True(result.Width > 0);
+        Assert.True(result.Height > 0);
+    }
+
+    [Fact]
+    public void DrawGrid_CrossMultipleZones_ProducesValidOutput()
+    {
+        using var baseMap = CreateTestBitmap(1024, 512);
+        var renderer = new MgrsGridRenderer();
+
+        // Area spanning zones 30, 31, 32 (boundaries at 0° and 6°)
+        using var result = renderer.DrawGrid(baseMap, 48.0, 50.0, -2.0, 8.0);
+
+        Assert.NotNull(result);
+        Assert.True(result.Width > 0);
+        Assert.True(result.Height > 0);
+    }
+
+    [Fact]
+    public void DrawGrid_ZoneBoundaryAtGreenwich_ProducesValidOutput()
+    {
+        using var baseMap = CreateTestBitmap();
+        var renderer = new MgrsGridRenderer();
+
+        // Area spanning zone 30/31 boundary at 0° (Greenwich)
+        using var result = renderer.DrawGrid(baseMap, 51.0, 52.0, -1.0, 1.0);
+
+        Assert.NotNull(result);
+        Assert.True(result.Width > 0);
+        Assert.True(result.Height > 0);
+    }
+
+    [Fact]
+    public void DrawGrid_NorwaySpecialZone_ProducesValidOutput()
+    {
+        using var baseMap = CreateTestBitmap();
+        var renderer = new MgrsGridRenderer();
+
+        // Area in Norway's special zone 32V
+        using var result = renderer.DrawGrid(baseMap, 58.0, 62.0, 4.0, 10.0);
+
+        Assert.NotNull(result);
+        Assert.True(result.Width > 0);
+        Assert.True(result.Height > 0);
+    }
+
+    [Fact]
+    public void DrawGrid_WideAreaSpanningManyZones_ProducesValidOutput()
+    {
+        using var baseMap = CreateTestBitmap(2048, 512);
+        var options = new MgrsGridOptions { Scale = MapScale.Scale1To100000 };
+        var renderer = new MgrsGridRenderer(options);
+
+        // Wide area spanning ~4 zones (each zone is 6 degrees)
+        using var result = renderer.DrawGrid(baseMap, 45.0, 47.0, -95.0, -70.0);
+
+        Assert.NotNull(result);
+        Assert.True(result.Width > 0);
+        Assert.True(result.Height > 0);
+    }
 }

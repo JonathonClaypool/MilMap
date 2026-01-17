@@ -1,4 +1,5 @@
 using System;
+using MilMap.Core.Mgrs;
 using SkiaSharp;
 
 namespace MilMap.Core.Rendering;
@@ -109,6 +110,7 @@ public class MgrsGridRenderer
 
     /// <summary>
     /// Draws MGRS grid overlay on a bitmap.
+    /// Properly handles maps that span multiple UTM zones.
     /// </summary>
     public SKBitmap DrawGrid(
         SKBitmap baseMap,
@@ -131,30 +133,18 @@ public class MgrsGridRenderer
         // Draw base map in center
         canvas.DrawBitmap(baseMap, marginWidth, marginWidth);
 
-        // Calculate UTM zone for the center
-        double centerLon = (minLon + maxLon) / 2;
-        double centerLat = (minLat + maxLat) / 2;
-        int zone = GetUtmZone(centerLat, centerLon);
-        double lonOrigin = (zone - 1) * 6 - 180 + 3;
-
-        // Convert corners to UTM
-        var (minE, minN) = LatLonToUtm(minLat, minLon, zone);
-        var (maxE, maxN) = LatLonToUtm(maxLat, maxLon, zone);
-
-        // Round to grid interval
-        double startEasting = Math.Floor(minE / gridInterval) * gridInterval;
-        double endEasting = Math.Ceiling(maxE / gridInterval) * gridInterval;
-        double startNorthing = Math.Floor(minN / gridInterval) * gridInterval;
-        double endNorthing = Math.Ceiling(maxN / gridInterval) * gridInterval;
-
-        // Pixels per meter
-        double pixelsPerMeterX = baseMap.Width / (maxE - minE);
-        double pixelsPerMeterY = baseMap.Height / (maxN - minN);
-
         using var linePaint = new SKPaint
         {
             Color = _options.GridLineColor,
             StrokeWidth = _options.GridLineWidth,
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke
+        };
+
+        using var zoneBoundaryPaint = new SKPaint
+        {
+            Color = _options.GridLineColor,
+            StrokeWidth = _options.GridLineWidth * 2, // Thicker line for zone boundaries
             IsAntialias = true,
             Style = SKPaintStyle.Stroke
         };
@@ -175,21 +165,86 @@ public class MgrsGridRenderer
             Typeface = SKTypeface.FromFamilyName(null, SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
         };
 
-        // Draw vertical grid lines (constant easting)
-        for (double easting = startEasting; easting <= endEasting; easting += gridInterval)
-        {
-            double pixelX = (easting - minE) * pixelsPerMeterX + marginWidth;
+        // Get all zones that the map spans
+        var zones = MgrsBoundary.GetZonesForBounds(minLat, maxLat, minLon, maxLon);
 
+        // Pixels per degree
+        double pixelsPerDegreeLon = baseMap.Width / (maxLon - minLon);
+        double pixelsPerDegreeLat = baseMap.Height / (maxLat - minLat);
+
+        // Draw grid for each zone
+        foreach (var zoneInfo in zones)
+        {
+            DrawZoneGrid(
+                canvas, zoneInfo, gridInterval,
+                minLat, maxLat, minLon, maxLon,
+                baseMap.Width, baseMap.Height, marginWidth,
+                pixelsPerDegreeLon, pixelsPerDegreeLat,
+                linePaint, labelPaint, principalPaint);
+        }
+
+        // Draw zone boundary lines (thicker lines at zone edges)
+        var zoneBoundaries = MgrsBoundary.GetZoneBoundariesInRange(minLon, maxLon);
+        foreach (double boundaryLon in zoneBoundaries)
+        {
+            float pixelX = (float)((boundaryLon - minLon) * pixelsPerDegreeLon + marginWidth);
             if (pixelX >= marginWidth && pixelX <= marginWidth + baseMap.Width)
             {
                 canvas.DrawLine(
-                    (float)pixelX, marginWidth,
-                    (float)pixelX, marginWidth + baseMap.Height,
+                    pixelX, marginWidth,
+                    pixelX, marginWidth + baseMap.Height,
+                    zoneBoundaryPaint);
+            }
+        }
+
+        return result;
+    }
+
+    private void DrawZoneGrid(
+        SKCanvas canvas,
+        UtmZoneInfo zoneInfo,
+        int gridInterval,
+        double minLat, double maxLat,
+        double mapMinLon, double mapMaxLon,
+        int mapWidth, int mapHeight,
+        int marginWidth,
+        double pixelsPerDegreeLon, double pixelsPerDegreeLat,
+        SKPaint linePaint, SKPaint labelPaint, SKPaint principalPaint)
+    {
+        int zone = zoneInfo.Zone;
+
+        // Convert zone boundaries to UTM in this zone
+        var (zoneMinE, zoneMinN) = LatLonToUtm(minLat, zoneInfo.MinLon, zone);
+        var (zoneMaxE, zoneMaxN) = LatLonToUtm(maxLat, zoneInfo.MaxLon, zone);
+
+        // Round to grid interval
+        double startEasting = Math.Floor(Math.Min(zoneMinE, zoneMaxE) / gridInterval) * gridInterval;
+        double endEasting = Math.Ceiling(Math.Max(zoneMinE, zoneMaxE) / gridInterval) * gridInterval;
+        double startNorthing = Math.Floor(Math.Min(zoneMinN, zoneMaxN) / gridInterval) * gridInterval;
+        double endNorthing = Math.Ceiling(Math.Max(zoneMinN, zoneMaxN) / gridInterval) * gridInterval;
+
+        // Draw vertical grid lines (constant easting) for this zone
+        for (double easting = startEasting; easting <= endEasting; easting += gridInterval)
+        {
+            // Convert easting back to longitude
+            double lon = UtmToLon(easting, (minLat + maxLat) / 2, zone);
+
+            // Check if longitude is within this zone's bounds and the map bounds
+            if (lon < zoneInfo.MinLon || lon > zoneInfo.MaxLon)
+                continue;
+
+            float pixelX = (float)((lon - mapMinLon) * pixelsPerDegreeLon + marginWidth);
+
+            if (pixelX >= marginWidth && pixelX <= marginWidth + mapWidth)
+            {
+                canvas.DrawLine(
+                    pixelX, marginWidth,
+                    pixelX, marginWidth + mapHeight,
                     linePaint);
 
                 if (_options.ShowLabels)
                 {
-                    DrawEastingLabel(canvas, easting, (float)pixelX, marginWidth, baseMap.Height, labelPaint, principalPaint);
+                    DrawEastingLabel(canvas, easting, pixelX, marginWidth, mapHeight, labelPaint, principalPaint);
                 }
             }
         }
@@ -197,24 +252,82 @@ public class MgrsGridRenderer
         // Draw horizontal grid lines (constant northing)
         for (double northing = startNorthing; northing <= endNorthing; northing += gridInterval)
         {
-            // Northing increases upward, but pixel Y increases downward
-            double pixelY = marginWidth + baseMap.Height - (northing - minN) * pixelsPerMeterY;
+            // Convert northing back to latitude
+            double lat = UtmToLat(northing, 500000, zone, minLat < 0);
 
-            if (pixelY >= marginWidth && pixelY <= marginWidth + baseMap.Height)
+            if (lat < minLat || lat > maxLat)
+                continue;
+
+            // Latitude increases upward, but pixel Y increases downward
+            float pixelY = (float)(marginWidth + mapHeight - (lat - minLat) * pixelsPerDegreeLat);
+
+            if (pixelY >= marginWidth && pixelY <= marginWidth + mapHeight)
             {
-                canvas.DrawLine(
-                    marginWidth, (float)pixelY,
-                    marginWidth + baseMap.Width, (float)pixelY,
-                    linePaint);
+                // For horizontal lines, determine the pixel X range within this zone
+                float startPixelX = (float)((zoneInfo.MinLon - mapMinLon) * pixelsPerDegreeLon + marginWidth);
+                float endPixelX = (float)((zoneInfo.MaxLon - mapMinLon) * pixelsPerDegreeLon + marginWidth);
 
-                if (_options.ShowLabels)
+                startPixelX = Math.Max(startPixelX, marginWidth);
+                endPixelX = Math.Min(endPixelX, marginWidth + mapWidth);
+
+                if (startPixelX < endPixelX)
                 {
-                    DrawNorthingLabel(canvas, northing, (float)pixelY, marginWidth, baseMap.Width, labelPaint, principalPaint);
+                    canvas.DrawLine(
+                        startPixelX, pixelY,
+                        endPixelX, pixelY,
+                        linePaint);
+
+                    // Only show labels at the left edge of the map or at zone boundaries
+                    if (_options.ShowLabels && Math.Abs(startPixelX - marginWidth) < 1)
+                    {
+                        DrawNorthingLabel(canvas, northing, pixelY, marginWidth, mapWidth, labelPaint, principalPaint);
+                    }
                 }
             }
         }
+    }
 
-        return result;
+    private static double UtmToLon(double easting, double lat, int zone)
+    {
+        double lonOrigin = (zone - 1) * 6 - 180 + 3;
+
+        // Simplified inverse: approximate longitude from easting
+        double latRad = lat * DegToRad;
+        double N = SemiMajorAxis / Math.Sqrt(1 - EccentricitySquared * Math.Sin(latRad) * Math.Sin(latRad));
+        double D = (easting - 500000) / (N * K0);
+
+        double lon = lonOrigin + RadToDeg * D / Math.Cos(latRad);
+        return lon;
+    }
+
+    private static double UtmToLat(double northing, double easting, int zone, bool isSouthernHemisphere)
+    {
+        double adjustedNorthing = isSouthernHemisphere ? northing - 10000000 : northing;
+
+        double e1 = (1 - Math.Sqrt(1 - EccentricitySquared)) / (1 + Math.Sqrt(1 - EccentricitySquared));
+        double M = adjustedNorthing / K0;
+        double mu = M / (SemiMajorAxis * (1 - EccentricitySquared / 4 - 3 * Math.Pow(EccentricitySquared, 2) / 64 - 5 * Math.Pow(EccentricitySquared, 3) / 256));
+
+        double phi1Rad = mu
+            + (3 * e1 / 2 - 27 * Math.Pow(e1, 3) / 32) * Math.Sin(2 * mu)
+            + (21 * e1 * e1 / 16 - 55 * Math.Pow(e1, 4) / 32) * Math.Sin(4 * mu)
+            + (151 * Math.Pow(e1, 3) / 96) * Math.Sin(6 * mu)
+            + (1097 * Math.Pow(e1, 4) / 512) * Math.Sin(8 * mu);
+
+        double N1 = SemiMajorAxis / Math.Sqrt(1 - EccentricitySquared * Math.Sin(phi1Rad) * Math.Sin(phi1Rad));
+        double T1 = Math.Tan(phi1Rad) * Math.Tan(phi1Rad);
+        double C1 = EccentricitySquared / (1 - EccentricitySquared) * Math.Cos(phi1Rad) * Math.Cos(phi1Rad);
+        double R1 = SemiMajorAxis * (1 - EccentricitySquared) / Math.Pow(1 - EccentricitySquared * Math.Sin(phi1Rad) * Math.Sin(phi1Rad), 1.5);
+        double D = (easting - 500000) / (N1 * K0);
+
+        double lat = phi1Rad
+            - (N1 * Math.Tan(phi1Rad) / R1) * (
+                D * D / 2
+                - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * EccentricitySquared / (1 - EccentricitySquared)) * Math.Pow(D, 4) / 24
+                + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * EccentricitySquared / (1 - EccentricitySquared) - 3 * C1 * C1) * Math.Pow(D, 6) / 720
+            );
+
+        return lat * RadToDeg;
     }
 
     private void DrawEastingLabel(

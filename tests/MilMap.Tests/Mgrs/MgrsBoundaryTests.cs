@@ -171,4 +171,142 @@ public class MgrsBoundaryTests
         Assert.Equal(15.0, box.CenterLat);
         Assert.Equal(40.0, box.CenterLon);
     }
+
+    // Cross-zone boundary tests
+
+    [Theory]
+    [InlineData(-179.0, 1)] // Zone 1
+    [InlineData(-175.0, 1)] // Zone 1 (ends at -174)
+    [InlineData(-121.0, 10)] // Zone 10 (boundaries -126 to -120)
+    [InlineData(0.0, 31)] // Zone 31
+    [InlineData(3.0, 31)] // Zone 31
+    [InlineData(179.0, 60)] // Zone 60
+    public void GetUtmZone_ReturnsCorrectZone(double longitude, int expectedZone)
+    {
+        int zone = MgrsBoundary.GetUtmZone(longitude);
+        Assert.Equal(expectedZone, zone);
+    }
+
+    [Theory]
+    [InlineData(60.0, 5.0, 32)] // Norway special zone
+    [InlineData(75.0, 5.0, 31)] // Svalbard zone 31
+    [InlineData(75.0, 15.0, 33)] // Svalbard zone 33
+    public void GetUtmZone_WithLatitude_HandlesSpecialZones(double lat, double lon, int expectedZone)
+    {
+        int zone = MgrsBoundary.GetUtmZone(lat, lon);
+        Assert.Equal(expectedZone, zone);
+    }
+
+    [Theory]
+    [InlineData(1, -180, -174)]
+    [InlineData(31, 0, 6)]
+    [InlineData(60, 174, 180)]
+    public void GetZoneLongitudeBounds_ReturnsCorrectBounds(int zone, double expectedMin, double expectedMax)
+    {
+        var (minLon, maxLon) = MgrsBoundary.GetZoneLongitudeBounds(zone);
+        Assert.Equal(expectedMin, minLon);
+        Assert.Equal(expectedMax, maxLon);
+    }
+
+    [Fact]
+    public void GetZoneLongitudeBounds_InvalidZone_ThrowsException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => MgrsBoundary.GetZoneLongitudeBounds(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MgrsBoundary.GetZoneLongitudeBounds(61));
+    }
+
+    [Theory]
+    [InlineData(31, 3)]
+    [InlineData(10, -123)]
+    [InlineData(1, -177)]
+    public void GetZoneCentralMeridian_ReturnsCorrectValue(int zone, double expectedMeridian)
+    {
+        double meridian = MgrsBoundary.GetZoneCentralMeridian(zone);
+        Assert.Equal(expectedMeridian, meridian);
+    }
+
+    [Fact]
+    public void GetZonesForBounds_SingleZone_ReturnsOneZone()
+    {
+        // Area entirely within zone 18 (around -75 to -78 lon)
+        var zones = MgrsBoundary.GetZonesForBounds(40.0, 42.0, -77.0, -75.0);
+
+        Assert.Single(zones);
+        Assert.Equal(18, zones[0].Zone);
+    }
+
+    [Fact]
+    public void GetZonesForBounds_MultipleZones_ReturnsAllZones()
+    {
+        // Area spanning zones 17 and 18 (boundary at -78)
+        var zones = MgrsBoundary.GetZonesForBounds(40.0, 42.0, -80.0, -75.0);
+
+        Assert.Equal(2, zones.Count);
+        Assert.Equal(17, zones[0].Zone);
+        Assert.Equal(18, zones[1].Zone);
+    }
+
+    [Fact]
+    public void GetZonesForBounds_ThreeZones_ReturnsAllZones()
+    {
+        // Area spanning zones 30, 31, 32 (boundaries at 0 and 6)
+        var zones = MgrsBoundary.GetZonesForBounds(45.0, 50.0, -2.0, 8.0);
+
+        Assert.Equal(3, zones.Count);
+        Assert.Equal(30, zones[0].Zone);
+        Assert.Equal(31, zones[1].Zone);
+        Assert.Equal(32, zones[2].Zone);
+    }
+
+    [Fact]
+    public void GetZonesForBounds_ClipsToRequestedBounds()
+    {
+        // Request a small area in zone 31
+        var zones = MgrsBoundary.GetZonesForBounds(48.0, 49.0, 2.0, 4.0);
+
+        Assert.Single(zones);
+        Assert.Equal(31, zones[0].Zone);
+        Assert.Equal(2.0, zones[0].MinLon);
+        Assert.Equal(4.0, zones[0].MaxLon);
+    }
+
+    [Fact]
+    public void SpansMultipleZones_WithinSingleZone_ReturnsFalse()
+    {
+        bool spans = MgrsBoundary.SpansMultipleZones(-77.0, -75.0);
+        Assert.False(spans);
+    }
+
+    [Fact]
+    public void SpansMultipleZones_CrossingZoneBoundary_ReturnsTrue()
+    {
+        bool spans = MgrsBoundary.SpansMultipleZones(-80.0, -75.0);
+        Assert.True(spans);
+    }
+
+    [Fact]
+    public void GetZoneBoundariesInRange_NoBoundary_ReturnsEmpty()
+    {
+        var boundaries = MgrsBoundary.GetZoneBoundariesInRange(-77.0, -75.0);
+        Assert.Empty(boundaries);
+    }
+
+    [Fact]
+    public void GetZoneBoundariesInRange_OneBoundary_ReturnsOne()
+    {
+        // Zone 17/18 boundary is at -78
+        var boundaries = MgrsBoundary.GetZoneBoundariesInRange(-80.0, -75.0);
+        Assert.Single(boundaries);
+        Assert.Equal(-78.0, boundaries[0]);
+    }
+
+    [Fact]
+    public void GetZoneBoundariesInRange_TwoBoundaries_ReturnsTwo()
+    {
+        // Zones 30/31 boundary at 0, zones 31/32 boundary at 6
+        var boundaries = MgrsBoundary.GetZoneBoundariesInRange(-2.0, 8.0);
+        Assert.Equal(2, boundaries.Count);
+        Assert.Equal(0.0, boundaries[0]);
+        Assert.Equal(6.0, boundaries[1]);
+    }
 }
