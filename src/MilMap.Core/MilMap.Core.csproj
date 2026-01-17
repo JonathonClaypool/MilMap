@@ -11,4 +11,8 @@
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Input\Data\installations.json" />
+  </ItemGroup>
+
 </Project>

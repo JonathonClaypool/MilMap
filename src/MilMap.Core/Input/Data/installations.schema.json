@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Military Installations Database",
+  "description": "Schema for US military installation data used by MilMap",
+  "type": "object",
+  "required": ["version", "installations"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema file"
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of the database format (semver)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of last update (ISO 8601 date)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the database"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Data sources used to compile this database"
+    },
+    "installations": {
+      "type": "array",
+      "description": "Array of military installation entries",
+      "items": {
+        "$ref": "#/definitions/installation"
+      }
+    }
+  },
+  "definitions": {
+    "installation": {
+      "type": "object",
+      "required": ["id", "name", "type", "branch", "state", "boundingBox"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (lowercase, hyphenated)",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Official name of the installation"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative names, abbreviations, or former names"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "fort",
+            "camp",
+            "base",
+            "air_force_base",
+            "space_force_base",
+            "space_force_station",
+            "naval_base",
+            "naval_station",
+            "air_station",
+            "joint_base",
+            "depot",
+            "arsenal",
+            "proving_ground",
+            "missile_range",
+            "training_center",
+            "combat_center",
+            "barracks"
+          ],
+          "description": "Type of military installation"
+        },
+        "branch": {
+          "type": "string",
+          "enum": ["Army", "Navy", "Air Force", "Marines", "Space Force", "Coast Guard", "Joint"],
+          "description": "Primary military branch operating the installation"
+        },
+        "state": {
+          "type": "string",
+          "description": "US state abbreviation (2-letter code)",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "boundingBox": {
+          "$ref": "#/definitions/boundingBox"
+        }
+      }
+    },
+    "boundingBox": {
+      "type": "object",
+      "required": ["minLat", "maxLat", "minLon", "maxLon"],
+      "properties": {
+        "minLat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Minimum latitude (south boundary)"
+        },
+        "maxLat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Maximum latitude (north boundary)"
+        },
+        "minLon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Minimum longitude (west boundary)"
+        },
+        "maxLon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Maximum longitude (east boundary)"
+        }
+      }
+    }
+  }
+}

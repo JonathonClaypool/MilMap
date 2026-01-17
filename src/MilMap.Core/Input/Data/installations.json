@@ -1,0 +1,1272 @@
+{
+  "$schema": "./installations.schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-17",
+  "description": "US Military Installation Database for MilMap",
+  "sources": [
+    "OpenStreetMap",
+    "Public DoD Installation Data"
+  ],
+  "installations": [
+    {
+      "id": "fort-liberty",
+      "name": "Fort Liberty",
+      "aliases": ["Fort Bragg", "Ft Liberty", "Ft Bragg"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "NC",
+      "boundingBox": {
+        "minLat": 35.0500,
+        "maxLat": 35.2200,
+        "minLon": -79.1500,
+        "maxLon": -78.8500
+      }
+    },
+    {
+      "id": "fort-campbell",
+      "name": "Fort Campbell",
+      "aliases": ["Ft Campbell"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "KY",
+      "boundingBox": {
+        "minLat": 36.5500,
+        "maxLat": 36.7200,
+        "minLon": -87.6000,
+        "maxLon": -87.3500
+      }
+    },
+    {
+      "id": "fort-hood",
+      "name": "Fort Cavazos",
+      "aliases": ["Fort Hood", "Ft Hood", "Ft Cavazos"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "TX",
+      "boundingBox": {
+        "minLat": 31.0500,
+        "maxLat": 31.3500,
+        "minLon": -97.9000,
+        "maxLon": -97.6000
+      }
+    },
+    {
+      "id": "fort-benning",
+      "name": "Fort Moore",
+      "aliases": ["Fort Benning", "Ft Benning", "Ft Moore"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "GA",
+      "boundingBox": {
+        "minLat": 32.2800,
+        "maxLat": 32.4800,
+        "minLon": -85.0500,
+        "maxLon": -84.7500
+      }
+    },
+    {
+      "id": "fort-stewart",
+      "name": "Fort Stewart",
+      "aliases": ["Ft Stewart"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "GA",
+      "boundingBox": {
+        "minLat": 31.7500,
+        "maxLat": 32.0500,
+        "minLon": -81.7500,
+        "maxLon": -81.3500
+      }
+    },
+    {
+      "id": "fort-drum",
+      "name": "Fort Drum",
+      "aliases": ["Ft Drum"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "NY",
+      "boundingBox": {
+        "minLat": 43.9500,
+        "maxLat": 44.1500,
+        "minLon": -75.9000,
+        "maxLon": -75.6000
+      }
+    },
+    {
+      "id": "fort-carson",
+      "name": "Fort Carson",
+      "aliases": ["Ft Carson"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "CO",
+      "boundingBox": {
+        "minLat": 38.6500,
+        "maxLat": 38.8500,
+        "minLon": -104.8500,
+        "maxLon": -104.6500
+      }
+    },
+    {
+      "id": "fort-bliss",
+      "name": "Fort Bliss",
+      "aliases": ["Ft Bliss"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "TX",
+      "boundingBox": {
+        "minLat": 31.7500,
+        "maxLat": 32.1000,
+        "minLon": -106.5000,
+        "maxLon": -105.9000
+      }
+    },
+    {
+      "id": "fort-sill",
+      "name": "Fort Sill",
+      "aliases": ["Ft Sill"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "OK",
+      "boundingBox": {
+        "minLat": 34.6000,
+        "maxLat": 34.8000,
+        "minLon": -98.5500,
+        "maxLon": -98.3000
+      }
+    },
+    {
+      "id": "fort-riley",
+      "name": "Fort Riley",
+      "aliases": ["Ft Riley"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "KS",
+      "boundingBox": {
+        "minLat": 39.0000,
+        "maxLat": 39.2000,
+        "minLon": -96.9500,
+        "maxLon": -96.6500
+      }
+    },
+    {
+      "id": "fort-polk",
+      "name": "Fort Johnson",
+      "aliases": ["Fort Polk", "Ft Polk", "Ft Johnson", "JRTC"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "LA",
+      "boundingBox": {
+        "minLat": 31.0000,
+        "maxLat": 31.2500,
+        "minLon": -93.3000,
+        "maxLon": -93.0000
+      }
+    },
+    {
+      "id": "fort-irwin",
+      "name": "Fort Irwin",
+      "aliases": ["Ft Irwin", "NTC", "National Training Center"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 35.1000,
+        "maxLat": 35.4500,
+        "minLon": -116.8000,
+        "maxLon": -116.4000
+      }
+    },
+    {
+      "id": "fort-lewis",
+      "name": "Joint Base Lewis-McChord",
+      "aliases": ["Fort Lewis", "Ft Lewis", "McChord AFB", "JBLM"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "WA",
+      "boundingBox": {
+        "minLat": 46.9500,
+        "maxLat": 47.2000,
+        "minLon": -122.6500,
+        "maxLon": -122.3500
+      }
+    },
+    {
+      "id": "fort-huachuca",
+      "name": "Fort Huachuca",
+      "aliases": ["Ft Huachuca"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "AZ",
+      "boundingBox": {
+        "minLat": 31.4500,
+        "maxLat": 31.6500,
+        "minLon": -110.4500,
+        "maxLon": -110.2000
+      }
+    },
+    {
+      "id": "fort-gordon",
+      "name": "Fort Eisenhower",
+      "aliases": ["Fort Gordon", "Ft Gordon", "Ft Eisenhower"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "GA",
+      "boundingBox": {
+        "minLat": 33.3500,
+        "maxLat": 33.5000,
+        "minLon": -82.2500,
+        "maxLon": -82.0500
+      }
+    },
+    {
+      "id": "fort-jackson",
+      "name": "Fort Jackson",
+      "aliases": ["Ft Jackson"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "SC",
+      "boundingBox": {
+        "minLat": 33.9500,
+        "maxLat": 34.1000,
+        "minLon": -80.9500,
+        "maxLon": -80.8000
+      }
+    },
+    {
+      "id": "fort-leonard-wood",
+      "name": "Fort Leonard Wood",
+      "aliases": ["Ft Leonard Wood", "FLW"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "MO",
+      "boundingBox": {
+        "minLat": 37.6500,
+        "maxLat": 37.8500,
+        "minLon": -92.2500,
+        "maxLon": -92.0000
+      }
+    },
+    {
+      "id": "fort-leavenworth",
+      "name": "Fort Leavenworth",
+      "aliases": ["Ft Leavenworth"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "KS",
+      "boundingBox": {
+        "minLat": 39.3000,
+        "maxLat": 39.4000,
+        "minLon": -94.9500,
+        "maxLon": -94.8500
+      }
+    },
+    {
+      "id": "fort-meade",
+      "name": "Fort Meade",
+      "aliases": ["Ft Meade", "NSA"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "MD",
+      "boundingBox": {
+        "minLat": 39.0700,
+        "maxLat": 39.1500,
+        "minLon": -76.7800,
+        "maxLon": -76.7000
+      }
+    },
+    {
+      "id": "fort-belvoir",
+      "name": "Fort Belvoir",
+      "aliases": ["Ft Belvoir"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 38.6800,
+        "maxLat": 38.7600,
+        "minLon": -77.2000,
+        "maxLon": -77.0800
+      }
+    },
+    {
+      "id": "camp-pendleton",
+      "name": "Marine Corps Base Camp Pendleton",
+      "aliases": ["Camp Pendleton", "MCB Camp Pendleton"],
+      "type": "camp",
+      "branch": "Marines",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 33.1500,
+        "maxLat": 33.4500,
+        "minLon": -117.5500,
+        "maxLon": -117.2500
+      }
+    },
+    {
+      "id": "camp-lejeune",
+      "name": "Marine Corps Base Camp Lejeune",
+      "aliases": ["Camp Lejeune", "MCB Camp Lejeune"],
+      "type": "camp",
+      "branch": "Marines",
+      "state": "NC",
+      "boundingBox": {
+        "minLat": 34.5500,
+        "maxLat": 34.8000,
+        "minLon": -77.5500,
+        "maxLon": -77.2000
+      }
+    },
+    {
+      "id": "mcas-miramar",
+      "name": "Marine Corps Air Station Miramar",
+      "aliases": ["MCAS Miramar", "Miramar"],
+      "type": "air_station",
+      "branch": "Marines",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 32.8500,
+        "maxLat": 32.9200,
+        "minLon": -117.1700,
+        "maxLon": -117.0800
+      }
+    },
+    {
+      "id": "mcas-cherry-point",
+      "name": "Marine Corps Air Station Cherry Point",
+      "aliases": ["MCAS Cherry Point", "Cherry Point"],
+      "type": "air_station",
+      "branch": "Marines",
+      "state": "NC",
+      "boundingBox": {
+        "minLat": 34.8500,
+        "maxLat": 34.9500,
+        "minLon": -76.9500,
+        "maxLon": -76.8000
+      }
+    },
+    {
+      "id": "mcrd-san-diego",
+      "name": "Marine Corps Recruit Depot San Diego",
+      "aliases": ["MCRD San Diego", "MCRD SD"],
+      "type": "depot",
+      "branch": "Marines",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 32.7350,
+        "maxLat": 32.7500,
+        "minLon": -117.2050,
+        "maxLon": -117.1850
+      }
+    },
+    {
+      "id": "mcrd-parris-island",
+      "name": "Marine Corps Recruit Depot Parris Island",
+      "aliases": ["MCRD Parris Island", "Parris Island"],
+      "type": "depot",
+      "branch": "Marines",
+      "state": "SC",
+      "boundingBox": {
+        "minLat": 32.3200,
+        "maxLat": 32.3700,
+        "minLon": -80.7200,
+        "maxLon": -80.6500
+      }
+    },
+    {
+      "id": "twentynine-palms",
+      "name": "Marine Corps Air Ground Combat Center Twentynine Palms",
+      "aliases": ["Twentynine Palms", "29 Palms", "MCAGCC"],
+      "type": "combat_center",
+      "branch": "Marines",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 34.0000,
+        "maxLat": 34.5000,
+        "minLon": -116.5000,
+        "maxLon": -115.5000
+      }
+    },
+    {
+      "id": "quantico",
+      "name": "Marine Corps Base Quantico",
+      "aliases": ["Quantico", "MCB Quantico"],
+      "type": "base",
+      "branch": "Marines",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 38.4500,
+        "maxLat": 38.6000,
+        "minLon": -77.4500,
+        "maxLon": -77.2500
+      }
+    },
+    {
+      "id": "naval-station-norfolk",
+      "name": "Naval Station Norfolk",
+      "aliases": ["NS Norfolk", "Norfolk Naval Base"],
+      "type": "naval_station",
+      "branch": "Navy",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 36.9200,
+        "maxLat": 37.0000,
+        "minLon": -76.3500,
+        "maxLon": -76.2500
+      }
+    },
+    {
+      "id": "naval-base-san-diego",
+      "name": "Naval Base San Diego",
+      "aliases": ["NBSD", "San Diego Naval Base"],
+      "type": "naval_base",
+      "branch": "Navy",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 32.6600,
+        "maxLat": 32.7100,
+        "minLon": -117.1600,
+        "maxLon": -117.1000
+      }
+    },
+    {
+      "id": "naval-station-mayport",
+      "name": "Naval Station Mayport",
+      "aliases": ["NS Mayport", "Mayport"],
+      "type": "naval_station",
+      "branch": "Navy",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.3800,
+        "maxLat": 30.4200,
+        "minLon": -81.4300,
+        "maxLon": -81.3800
+      }
+    },
+    {
+      "id": "naval-base-coronado",
+      "name": "Naval Base Coronado",
+      "aliases": ["NBC", "Coronado Naval Base", "NAB Coronado"],
+      "type": "naval_base",
+      "branch": "Navy",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 32.6600,
+        "maxLat": 32.7100,
+        "minLon": -117.2000,
+        "maxLon": -117.1400
+      }
+    },
+    {
+      "id": "naval-base-kitsap",
+      "name": "Naval Base Kitsap",
+      "aliases": ["NBK", "Bangor", "Bremerton Naval Base"],
+      "type": "naval_base",
+      "branch": "Navy",
+      "state": "WA",
+      "boundingBox": {
+        "minLat": 47.5500,
+        "maxLat": 47.7500,
+        "minLon": -122.7500,
+        "maxLon": -122.6000
+      }
+    },
+    {
+      "id": "nas-jacksonville",
+      "name": "Naval Air Station Jacksonville",
+      "aliases": ["NAS Jax", "NAS Jacksonville"],
+      "type": "air_station",
+      "branch": "Navy",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.2100,
+        "maxLat": 30.2600,
+        "minLon": -81.7000,
+        "maxLon": -81.6300
+      }
+    },
+    {
+      "id": "nas-pensacola",
+      "name": "Naval Air Station Pensacola",
+      "aliases": ["NAS Pensacola", "Pensacola NAS"],
+      "type": "air_station",
+      "branch": "Navy",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.3300,
+        "maxLat": 30.3800,
+        "minLon": -87.3200,
+        "maxLon": -87.2400
+      }
+    },
+    {
+      "id": "nas-oceana",
+      "name": "Naval Air Station Oceana",
+      "aliases": ["NAS Oceana", "Oceana"],
+      "type": "air_station",
+      "branch": "Navy",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 36.8000,
+        "maxLat": 36.8500,
+        "minLon": -76.0500,
+        "maxLon": -75.9700
+      }
+    },
+    {
+      "id": "nas-whidbey-island",
+      "name": "Naval Air Station Whidbey Island",
+      "aliases": ["NAS Whidbey", "Whidbey Island NAS"],
+      "type": "air_station",
+      "branch": "Navy",
+      "state": "WA",
+      "boundingBox": {
+        "minLat": 48.3200,
+        "maxLat": 48.3700,
+        "minLon": -122.6700,
+        "maxLon": -122.6100
+      }
+    },
+    {
+      "id": "nas-corpus-christi",
+      "name": "Naval Air Station Corpus Christi",
+      "aliases": ["NAS Corpus Christi", "NASCC"],
+      "type": "air_station",
+      "branch": "Navy",
+      "state": "TX",
+      "boundingBox": {
+        "minLat": 27.6800,
+        "maxLat": 27.7200,
+        "minLon": -97.3000,
+        "maxLon": -97.2500
+      }
+    },
+    {
+      "id": "naval-station-great-lakes",
+      "name": "Naval Station Great Lakes",
+      "aliases": ["Great Lakes", "RTC Great Lakes"],
+      "type": "naval_station",
+      "branch": "Navy",
+      "state": "IL",
+      "boundingBox": {
+        "minLat": 42.2900,
+        "maxLat": 42.3400,
+        "minLon": -87.8700,
+        "maxLon": -87.8100
+      }
+    },
+    {
+      "id": "nswc-dam-neck",
+      "name": "Naval Special Warfare Command Dam Neck",
+      "aliases": ["Dam Neck", "NSWC Dam Neck", "SEAL Team 6"],
+      "type": "base",
+      "branch": "Navy",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 36.7800,
+        "maxLat": 36.8200,
+        "minLon": -76.0100,
+        "maxLon": -75.9600
+      }
+    },
+    {
+      "id": "nswc-coronado",
+      "name": "Naval Special Warfare Center Coronado",
+      "aliases": ["NSWC Coronado", "BUD/S"],
+      "type": "base",
+      "branch": "Navy",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 32.6700,
+        "maxLat": 32.6950,
+        "minLon": -117.1950,
+        "maxLon": -117.1700
+      }
+    },
+    {
+      "id": "edwards-afb",
+      "name": "Edwards Air Force Base",
+      "aliases": ["Edwards AFB", "Edwards"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 34.8000,
+        "maxLat": 35.1500,
+        "minLon": -118.1500,
+        "maxLon": -117.7500
+      }
+    },
+    {
+      "id": "nellis-afb",
+      "name": "Nellis Air Force Base",
+      "aliases": ["Nellis AFB", "Nellis"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "NV",
+      "boundingBox": {
+        "minLat": 36.2000,
+        "maxLat": 36.3000,
+        "minLon": -115.1000,
+        "maxLon": -114.9500
+      }
+    },
+    {
+      "id": "creech-afb",
+      "name": "Creech Air Force Base",
+      "aliases": ["Creech AFB", "Creech"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "NV",
+      "boundingBox": {
+        "minLat": 36.5500,
+        "maxLat": 36.6200,
+        "minLon": -115.7200,
+        "maxLon": -115.6400
+      }
+    },
+    {
+      "id": "eglin-afb",
+      "name": "Eglin Air Force Base",
+      "aliases": ["Eglin AFB", "Eglin"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.3500,
+        "maxLat": 30.6500,
+        "minLon": -86.7500,
+        "maxLon": -86.3500
+      }
+    },
+    {
+      "id": "hurlburt-field",
+      "name": "Hurlburt Field",
+      "aliases": ["Hurlburt"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.3900,
+        "maxLat": 30.4400,
+        "minLon": -86.7100,
+        "maxLon": -86.6400
+      }
+    },
+    {
+      "id": "tyndall-afb",
+      "name": "Tyndall Air Force Base",
+      "aliases": ["Tyndall AFB", "Tyndall"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 30.0500,
+        "maxLat": 30.1200,
+        "minLon": -85.6300,
+        "maxLon": -85.5500
+      }
+    },
+    {
+      "id": "moody-afb",
+      "name": "Moody Air Force Base",
+      "aliases": ["Moody AFB", "Moody"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "GA",
+      "boundingBox": {
+        "minLat": 30.9500,
+        "maxLat": 31.0200,
+        "minLon": -83.2200,
+        "maxLon": -83.1400
+      }
+    },
+    {
+      "id": "shaw-afb",
+      "name": "Shaw Air Force Base",
+      "aliases": ["Shaw AFB", "Shaw"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "SC",
+      "boundingBox": {
+        "minLat": 33.9500,
+        "maxLat": 34.0000,
+        "minLon": -80.5000,
+        "maxLon": -80.4300
+      }
+    },
+    {
+      "id": "seymour-johnson-afb",
+      "name": "Seymour Johnson Air Force Base",
+      "aliases": ["Seymour Johnson AFB", "Seymour Johnson"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "NC",
+      "boundingBox": {
+        "minLat": 35.3200,
+        "maxLat": 35.3800,
+        "minLon": -77.9800,
+        "maxLon": -77.9100
+      }
+    },
+    {
+      "id": "langley-afb",
+      "name": "Joint Base Langley-Eustis",
+      "aliases": ["Langley AFB", "Langley", "JBLE", "Fort Eustis"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "VA",
+      "boundingBox": {
+        "minLat": 37.0500,
+        "maxLat": 37.1500,
+        "minLon": -76.4000,
+        "maxLon": -76.3000
+      }
+    },
+    {
+      "id": "offutt-afb",
+      "name": "Offutt Air Force Base",
+      "aliases": ["Offutt AFB", "Offutt", "STRATCOM"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "NE",
+      "boundingBox": {
+        "minLat": 41.0800,
+        "maxLat": 41.1500,
+        "minLon": -95.9500,
+        "maxLon": -95.8800
+      }
+    },
+    {
+      "id": "whiteman-afb",
+      "name": "Whiteman Air Force Base",
+      "aliases": ["Whiteman AFB", "Whiteman", "B-2 Base"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "MO",
+      "boundingBox": {
+        "minLat": 38.7000,
+        "maxLat": 38.7700,
+        "minLon": -93.5800,
+        "maxLon": -93.5000
+      }
+    },
+    {
+      "id": "barksdale-afb",
+      "name": "Barksdale Air Force Base",
+      "aliases": ["Barksdale AFB", "Barksdale"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "LA",
+      "boundingBox": {
+        "minLat": 32.4700,
+        "maxLat": 32.5500,
+        "minLon": -93.6800,
+        "maxLon": -93.5800
+      }
+    },
+    {
+      "id": "dyess-afb",
+      "name": "Dyess Air Force Base",
+      "aliases": ["Dyess AFB", "Dyess"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "TX",
+      "boundingBox": {
+        "minLat": 32.4000,
+        "maxLat": 32.4600,
+        "minLon": -99.8800,
+        "maxLon": -99.8100
+      }
+    },
+    {
+      "id": "minot-afb",
+      "name": "Minot Air Force Base",
+      "aliases": ["Minot AFB", "Minot"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "ND",
+      "boundingBox": {
+        "minLat": 48.3800,
+        "maxLat": 48.4500,
+        "minLon": -101.3800,
+        "maxLon": -101.2800
+      }
+    },
+    {
+      "id": "malmstrom-afb",
+      "name": "Malmstrom Air Force Base",
+      "aliases": ["Malmstrom AFB", "Malmstrom"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "MT",
+      "boundingBox": {
+        "minLat": 47.4800,
+        "maxLat": 47.5400,
+        "minLon": -111.2000,
+        "maxLon": -111.1200
+      }
+    },
+    {
+      "id": "hill-afb",
+      "name": "Hill Air Force Base",
+      "aliases": ["Hill AFB", "Hill"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "UT",
+      "boundingBox": {
+        "minLat": 41.1000,
+        "maxLat": 41.1800,
+        "minLon": -112.0200,
+        "maxLon": -111.9200
+      }
+    },
+    {
+      "id": "luke-afb",
+      "name": "Luke Air Force Base",
+      "aliases": ["Luke AFB", "Luke"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "AZ",
+      "boundingBox": {
+        "minLat": 33.5200,
+        "maxLat": 33.5800,
+        "minLon": -112.4200,
+        "maxLon": -112.3400
+      }
+    },
+    {
+      "id": "davis-monthan-afb",
+      "name": "Davis-Monthan Air Force Base",
+      "aliases": ["Davis-Monthan AFB", "DM AFB", "Boneyard"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "AZ",
+      "boundingBox": {
+        "minLat": 32.1400,
+        "maxLat": 32.2000,
+        "minLon": -110.8900,
+        "maxLon": -110.8100
+      }
+    },
+    {
+      "id": "travis-afb",
+      "name": "Travis Air Force Base",
+      "aliases": ["Travis AFB", "Travis"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 38.2300,
+        "maxLat": 38.3000,
+        "minLon": -121.9800,
+        "maxLon": -121.9000
+      }
+    },
+    {
+      "id": "beale-afb",
+      "name": "Beale Air Force Base",
+      "aliases": ["Beale AFB", "Beale"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 39.0800,
+        "maxLat": 39.1500,
+        "minLon": -121.4700,
+        "maxLon": -121.3800
+      }
+    },
+    {
+      "id": "vandenberg-sfb",
+      "name": "Vandenberg Space Force Base",
+      "aliases": ["Vandenberg AFB", "Vandenberg SFB", "Vandenberg"],
+      "type": "space_force_base",
+      "branch": "Space Force",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 34.5500,
+        "maxLat": 34.8500,
+        "minLon": -120.7000,
+        "maxLon": -120.4000
+      }
+    },
+    {
+      "id": "peterson-sfb",
+      "name": "Peterson Space Force Base",
+      "aliases": ["Peterson AFB", "Peterson SFB", "Peterson"],
+      "type": "space_force_base",
+      "branch": "Space Force",
+      "state": "CO",
+      "boundingBox": {
+        "minLat": 38.7800,
+        "maxLat": 38.8400,
+        "minLon": -104.7200,
+        "maxLon": -104.6500
+      }
+    },
+    {
+      "id": "schriever-sfb",
+      "name": "Schriever Space Force Base",
+      "aliases": ["Schriever AFB", "Schriever SFB", "Schriever"],
+      "type": "space_force_base",
+      "branch": "Space Force",
+      "state": "CO",
+      "boundingBox": {
+        "minLat": 38.7900,
+        "maxLat": 38.8200,
+        "minLon": -104.5500,
+        "maxLon": -104.5000
+      }
+    },
+    {
+      "id": "buckley-sfb",
+      "name": "Buckley Space Force Base",
+      "aliases": ["Buckley AFB", "Buckley SFB", "Buckley"],
+      "type": "space_force_base",
+      "branch": "Space Force",
+      "state": "CO",
+      "boundingBox": {
+        "minLat": 39.6800,
+        "maxLat": 39.7400,
+        "minLon": -104.7800,
+        "maxLon": -104.7100
+      }
+    },
+    {
+      "id": "cape-canaveral-sfs",
+      "name": "Cape Canaveral Space Force Station",
+      "aliases": ["Cape Canaveral", "CCSFS", "Cape Kennedy"],
+      "type": "space_force_station",
+      "branch": "Space Force",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 28.4000,
+        "maxLat": 28.5500,
+        "minLon": -80.6500,
+        "maxLon": -80.5000
+      }
+    },
+    {
+      "id": "patrick-sfb",
+      "name": "Patrick Space Force Base",
+      "aliases": ["Patrick AFB", "Patrick SFB", "Patrick"],
+      "type": "space_force_base",
+      "branch": "Space Force",
+      "state": "FL",
+      "boundingBox": {
+        "minLat": 28.2000,
+        "maxLat": 28.2600,
+        "minLon": -80.6200,
+        "maxLon": -80.5700
+      }
+    },
+    {
+      "id": "jb-charleston",
+      "name": "Joint Base Charleston",
+      "aliases": ["JB Charleston", "Charleston AFB"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "SC",
+      "boundingBox": {
+        "minLat": 32.8700,
+        "maxLat": 32.9300,
+        "minLon": -80.0700,
+        "maxLon": -79.9800
+      }
+    },
+    {
+      "id": "jb-andrews",
+      "name": "Joint Base Andrews",
+      "aliases": ["Andrews AFB", "JB Andrews"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "MD",
+      "boundingBox": {
+        "minLat": 38.7800,
+        "maxLat": 38.8400,
+        "minLon": -76.8800,
+        "maxLon": -76.8200
+      }
+    },
+    {
+      "id": "jb-mcguire-dix-lakehurst",
+      "name": "Joint Base McGuire-Dix-Lakehurst",
+      "aliases": ["JB MDL", "McGuire AFB", "Fort Dix"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "NJ",
+      "boundingBox": {
+        "minLat": 39.9500,
+        "maxLat": 40.1500,
+        "minLon": -74.6500,
+        "maxLon": -74.3500
+      }
+    },
+    {
+      "id": "jb-san-antonio",
+      "name": "Joint Base San Antonio",
+      "aliases": ["JBSA", "Lackland AFB", "Randolph AFB", "Fort Sam Houston"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "TX",
+      "boundingBox": {
+        "minLat": 29.3500,
+        "maxLat": 29.6000,
+        "minLon": -98.7000,
+        "maxLon": -98.4000
+      }
+    },
+    {
+      "id": "jb-pearl-harbor-hickam",
+      "name": "Joint Base Pearl Harbor-Hickam",
+      "aliases": ["JBPHH", "Pearl Harbor", "Hickam AFB"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "HI",
+      "boundingBox": {
+        "minLat": 21.2900,
+        "maxLat": 21.3700,
+        "minLon": -157.9700,
+        "maxLon": -157.8800
+      }
+    },
+    {
+      "id": "jb-elmendorf-richardson",
+      "name": "Joint Base Elmendorf-Richardson",
+      "aliases": ["JBER", "Elmendorf AFB", "Fort Richardson"],
+      "type": "joint_base",
+      "branch": "Joint",
+      "state": "AK",
+      "boundingBox": {
+        "minLat": 61.1500,
+        "maxLat": 61.3000,
+        "minLon": -150.0500,
+        "maxLon": -149.7000
+      }
+    },
+    {
+      "id": "eielson-afb",
+      "name": "Eielson Air Force Base",
+      "aliases": ["Eielson AFB", "Eielson"],
+      "type": "air_force_base",
+      "branch": "Air Force",
+      "state": "AK",
+      "boundingBox": {
+        "minLat": 64.6000,
+        "maxLat": 64.7000,
+        "minLon": -147.1500,
+        "maxLon": -146.9500
+      }
+    },
+    {
+      "id": "schofield-barracks",
+      "name": "Schofield Barracks",
+      "aliases": ["Schofield"],
+      "type": "barracks",
+      "branch": "Army",
+      "state": "HI",
+      "boundingBox": {
+        "minLat": 21.4500,
+        "maxLat": 21.5200,
+        "minLon": -158.1000,
+        "maxLon": -158.0200
+      }
+    },
+    {
+      "id": "fort-shafter",
+      "name": "Fort Shafter",
+      "aliases": ["Ft Shafter"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "HI",
+      "boundingBox": {
+        "minLat": 21.3400,
+        "maxLat": 21.3600,
+        "minLon": -157.8900,
+        "maxLon": -157.8700
+      }
+    },
+    {
+      "id": "fort-wainwright",
+      "name": "Fort Wainwright",
+      "aliases": ["Ft Wainwright"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "AK",
+      "boundingBox": {
+        "minLat": 64.7500,
+        "maxLat": 64.8500,
+        "minLon": -147.7500,
+        "maxLon": -147.5000
+      }
+    },
+    {
+      "id": "fort-greely",
+      "name": "Fort Greely",
+      "aliases": ["Ft Greely"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "AK",
+      "boundingBox": {
+        "minLat": 63.9000,
+        "maxLat": 64.0500,
+        "minLon": -145.8500,
+        "maxLon": -145.5000
+      }
+    },
+    {
+      "id": "fort-bragg-ca",
+      "name": "Fort Bragg",
+      "aliases": ["Fort Bragg CA"],
+      "type": "fort",
+      "branch": "Army",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 39.4200,
+        "maxLat": 39.4700,
+        "minLon": -123.8200,
+        "maxLon": -123.7700
+      }
+    },
+    {
+      "id": "white-sands",
+      "name": "White Sands Missile Range",
+      "aliases": ["WSMR", "White Sands"],
+      "type": "missile_range",
+      "branch": "Army",
+      "state": "NM",
+      "boundingBox": {
+        "minLat": 32.0000,
+        "maxLat": 34.0000,
+        "minLon": -107.0000,
+        "maxLon": -105.5000
+      }
+    },
+    {
+      "id": "yuma-proving-ground",
+      "name": "Yuma Proving Ground",
+      "aliases": ["YPG", "Yuma PG"],
+      "type": "proving_ground",
+      "branch": "Army",
+      "state": "AZ",
+      "boundingBox": {
+        "minLat": 32.5000,
+        "maxLat": 33.5000,
+        "minLon": -114.5000,
+        "maxLon": -113.5000
+      }
+    },
+    {
+      "id": "aberdeen-proving-ground",
+      "name": "Aberdeen Proving Ground",
+      "aliases": ["APG", "Aberdeen PG"],
+      "type": "proving_ground",
+      "branch": "Army",
+      "state": "MD",
+      "boundingBox": {
+        "minLat": 39.3500,
+        "maxLat": 39.5500,
+        "minLon": -76.2500,
+        "maxLon": -75.9500
+      }
+    },
+    {
+      "id": "dugway-proving-ground",
+      "name": "Dugway Proving Ground",
+      "aliases": ["DPG", "Dugway"],
+      "type": "proving_ground",
+      "branch": "Army",
+      "state": "UT",
+      "boundingBox": {
+        "minLat": 40.0000,
+        "maxLat": 40.5000,
+        "minLon": -113.5000,
+        "maxLon": -112.5000
+      }
+    },
+    {
+      "id": "redstone-arsenal",
+      "name": "Redstone Arsenal",
+      "aliases": ["Redstone", "RSA"],
+      "type": "arsenal",
+      "branch": "Army",
+      "state": "AL",
+      "boundingBox": {
+        "minLat": 34.5500,
+        "maxLat": 34.7500,
+        "minLon": -86.7500,
+        "maxLon": -86.5000
+      }
+    },
+    {
+      "id": "picatinny-arsenal",
+      "name": "Picatinny Arsenal",
+      "aliases": ["Picatinny"],
+      "type": "arsenal",
+      "branch": "Army",
+      "state": "NJ",
+      "boundingBox": {
+        "minLat": 40.9200,
+        "maxLat": 41.0000,
+        "minLon": -74.5800,
+        "maxLon": -74.4800
+      }
+    },
+    {
+      "id": "rock-island-arsenal",
+      "name": "Rock Island Arsenal",
+      "aliases": ["RIA", "Rock Island"],
+      "type": "arsenal",
+      "branch": "Army",
+      "state": "IL",
+      "boundingBox": {
+        "minLat": 41.4900,
+        "maxLat": 41.5200,
+        "minLon": -90.5800,
+        "maxLon": -90.5300
+      }
+    },
+    {
+      "id": "mcb-hawaii",
+      "name": "Marine Corps Base Hawaii",
+      "aliases": ["MCB Hawaii", "Kaneohe Bay", "K-Bay"],
+      "type": "base",
+      "branch": "Marines",
+      "state": "HI",
+      "boundingBox": {
+        "minLat": 21.4200,
+        "maxLat": 21.4800,
+        "minLon": -157.7800,
+        "maxLon": -157.7200
+      }
+    },
+    {
+      "id": "uscg-base-alameda",
+      "name": "Coast Guard Island",
+      "aliases": ["USCG Alameda", "Coast Guard Island Alameda"],
+      "type": "base",
+      "branch": "Coast Guard",
+      "state": "CA",
+      "boundingBox": {
+        "minLat": 37.7700,
+        "maxLat": 37.7900,
+        "minLon": -122.2700,
+        "maxLon": -122.2400
+      }
+    },
+    {
+      "id": "uscg-training-center-cape-may",
+      "name": "Coast Guard Training Center Cape May",
+      "aliases": ["TRACEN Cape May", "USCG Cape May"],
+      "type": "training_center",
+      "branch": "Coast Guard",
+      "state": "NJ",
+      "boundingBox": {
+        "minLat": 38.9500,
+        "maxLat": 38.9800,
+        "minLon": -74.9200,
+        "maxLon": -74.8900
+      }
+    }
+  ]
+}
