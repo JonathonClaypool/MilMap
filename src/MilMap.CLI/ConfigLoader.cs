@@ -57,16 +57,14 @@ public class MilMapConfig
     /// </summary>
     public MapOptions ApplyTo(MapOptions options)
     {
-        return options with
-        {
-            Scale = options.Scale != 25000 ? options.Scale : (Scale ?? 25000),
-            Dpi = options.Dpi != 300 ? options.Dpi : (Dpi ?? 300),
-            Format = options.Format != OutputFormat.Pdf ? options.Format : ParseFormat(Format) ?? OutputFormat.Pdf,
-            CacheDir = options.CacheDir ?? CacheDir,
-            Mgrs = options.Mgrs ?? Mgrs,
-            Bounds = options.Bounds ?? Bounds,
-            Installation = options.Installation ?? Installation
-        };
+        options.Scale = options.Scale != 25000 ? options.Scale : (Scale ?? 25000);
+        options.Dpi = options.Dpi != 300 ? options.Dpi : (Dpi ?? 300);
+        options.Format = options.Format != OutputFormat.Pdf ? options.Format : ParseFormat(Format) ?? OutputFormat.Pdf;
+        options.CacheDir ??= CacheDir;
+        options.Mgrs ??= Mgrs;
+        options.Bounds ??= Bounds;
+        options.Installation ??= Installation;
+        return options;
     }
 
     private static OutputFormat? ParseFormat(string? format)

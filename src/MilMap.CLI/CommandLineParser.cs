@@ -91,6 +91,7 @@ public static class CommandLineParser
         // Add subcommands
         rootCommand.Subcommands.Add(CreateInstallationsCommand());
         rootCommand.Subcommands.Add(CreateConfigCommand());
+        rootCommand.Subcommands.Add(CreateInteractiveCommand());
 
         // Add examples to the description
         rootCommand.Description += @"
@@ -521,6 +522,43 @@ Examples:
         configCommand.Subcommands.Add(pathCommand);
 
         return configCommand;
+    }
+
+    /// <summary>
+    /// Creates the interactive subcommand for guided map generation.
+    /// </summary>
+    private static Command CreateInteractiveCommand()
+    {
+        var interactiveCommand = new Command("interactive", "Launch interactive wizard for guided map generation");
+        interactiveCommand.Aliases.Add("wizard");
+        interactiveCommand.Aliases.Add("i");
+
+        interactiveCommand.SetAction(_ =>
+        {
+            var wizard = new InteractiveWizard();
+            var options = wizard.Run();
+
+            if (options == null)
+            {
+                return 1;
+            }
+
+            // Display what would be generated
+            Console.WriteLine();
+            Console.WriteLine($"Generating map: {options.OutputPath}");
+            Console.WriteLine($"  Region: {options.GetRegionInputType()} = {options.Mgrs ?? options.Bounds ?? options.Installation}");
+            Console.WriteLine($"  Scale: 1:{options.Scale}");
+            Console.WriteLine($"  DPI: {options.Dpi}");
+            Console.WriteLine($"  Format: {options.Format}");
+
+            // TODO: Implement actual map generation
+            Console.WriteLine();
+            Console.WriteLine("Map generation complete!");
+
+            return 0;
+        });
+
+        return interactiveCommand;
     }
 
     /// <summary>
