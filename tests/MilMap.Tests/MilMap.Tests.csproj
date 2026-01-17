@@ -22,4 +22,10 @@
     <ProjectReference Include="..\..\src\MilMap.Core\MilMap.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Fixtures\SampleMaps\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
