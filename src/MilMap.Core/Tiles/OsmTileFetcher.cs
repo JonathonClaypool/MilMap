@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using MilMap.Core.Progress;
 
 namespace MilMap.Core.Tiles;
 
@@ -118,10 +119,11 @@ public class OsmTileFetcher : IDisposable
     /// </summary>
     public async Task<TileFetchResult> FetchTilesAsync(
         double minLat, double maxLat, double minLon, double maxLon, int zoom,
+        IProgress<TileDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var coordinates = CalculateTileCoordinates(minLat, maxLat, minLon, maxLon, zoom);
-        return await FetchTilesAsync(coordinates, zoom, cancellationToken);
+        return await FetchTilesAsync(coordinates, zoom, progress, cancellationToken);
     }
 
     /// <summary>
@@ -129,14 +131,26 @@ public class OsmTileFetcher : IDisposable
     /// </summary>
     public async Task<TileFetchResult> FetchTilesAsync(
         IReadOnlyList<(int X, int Y)> coordinates, int zoom,
+        IProgress<TileDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ValidateZoomLevel(zoom);
 
         var tiles = new ConcurrentBag<TileData>();
         var errors = new ConcurrentBag<TileFetchError>();
+        int downloadedCount = 0;
+        int failedCount = 0;
 
         using var semaphore = new SemaphoreSlim(_options.MaxConcurrency);
+
+        // Report initial progress
+        progress?.Report(new TileDownloadProgress
+        {
+            Downloaded = 0,
+            FromCache = 0,
+            Total = coordinates.Count,
+            Failed = 0
+        });
 
         var tasks = coordinates.Select(async coord =>
         {
@@ -147,11 +161,27 @@ public class OsmTileFetcher : IDisposable
                 if (result != null)
                 {
                     tiles.Add(result);
+                    int current = Interlocked.Increment(ref downloadedCount);
+                    progress?.Report(new TileDownloadProgress
+                    {
+                        Downloaded = current,
+                        FromCache = 0,
+                        Total = coordinates.Count,
+                        Failed = Volatile.Read(ref failedCount)
+                    });
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 errors.Add(new TileFetchError(coord.X, coord.Y, zoom, ex.Message));
+                int failed = Interlocked.Increment(ref failedCount);
+                progress?.Report(new TileDownloadProgress
+                {
+                    Downloaded = Volatile.Read(ref downloadedCount),
+                    FromCache = 0,
+                    Total = coordinates.Count,
+                    Failed = failed
+                });
             }
             finally
             {

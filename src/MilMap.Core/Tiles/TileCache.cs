@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MilMap.Core.Progress;
 
 namespace MilMap.Core.Tiles;
 
@@ -97,10 +98,11 @@ public class TileCache : IDisposable
     /// </summary>
     public async Task<TileFetchResult> GetTilesAsync(
         double minLat, double maxLat, double minLon, double maxLon, int zoom,
+        IProgress<TileDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var coordinates = OsmTileFetcher.CalculateTileCoordinates(minLat, maxLat, minLon, maxLon, zoom);
-        return await GetTilesAsync(coordinates, zoom, cancellationToken);
+        return await GetTilesAsync(coordinates, zoom, progress, cancellationToken);
     }
 
     /// <summary>
@@ -108,11 +110,13 @@ public class TileCache : IDisposable
     /// </summary>
     public async Task<TileFetchResult> GetTilesAsync(
         IReadOnlyList<(int X, int Y)> coordinates, int zoom,
+        IProgress<TileDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var tiles = new List<TileData>();
         var errors = new List<TileFetchError>();
         var tilesToFetch = new List<(int X, int Y)>();
+        int fromCacheCount = 0;
 
         // Check cache for each tile
         foreach (var (x, y) in coordinates)
@@ -121,6 +125,14 @@ public class TileCache : IDisposable
             if (cachedTile != null && !IsTileStale(x, y, zoom))
             {
                 tiles.Add(cachedTile);
+                fromCacheCount++;
+                progress?.Report(new TileDownloadProgress
+                {
+                    Downloaded = 0,
+                    FromCache = fromCacheCount,
+                    Total = coordinates.Count,
+                    Failed = 0
+                });
             }
             else
             {
@@ -131,7 +143,21 @@ public class TileCache : IDisposable
         // Fetch missing tiles
         if (tilesToFetch.Count > 0)
         {
-            var fetchResult = await _fetcher.FetchTilesAsync(tilesToFetch, zoom, cancellationToken);
+            // Create a wrapper progress to combine cache and download counts
+            var downloadProgress = progress != null
+                ? new Progress<TileDownloadProgress>(p =>
+                {
+                    progress.Report(new TileDownloadProgress
+                    {
+                        Downloaded = p.Downloaded,
+                        FromCache = fromCacheCount,
+                        Total = coordinates.Count,
+                        Failed = p.Failed
+                    });
+                })
+                : null;
+
+            var fetchResult = await _fetcher.FetchTilesAsync(tilesToFetch, zoom, downloadProgress, cancellationToken);
             
             foreach (var tile in fetchResult.Tiles)
             {
