@@ -1267,6 +1267,20 @@
         "minLon": -74.9200,
         "maxLon": -74.8900
       }
+    },
+    {
+      "id": "camp-ripley",
+      "name": "Camp Ripley",
+      "aliases": ["Camp Ripley Training Center", "Minnesota Military Camp Ripley"],
+      "type": "training_center",
+      "branch": "Army",
+      "state": "MN",
+      "boundingBox": {
+        "minLat": 46.0300,
+        "maxLat": 46.2200,
+        "minLon": -94.4300,
+        "maxLon": -94.2500
+      }
     }
   ]
 }
