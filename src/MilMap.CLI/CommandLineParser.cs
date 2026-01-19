@@ -1,5 +1,7 @@
 using System.CommandLine;
+using MilMap.Core;
 using MilMap.Core.Input;
+using MilMap.Core.Mgrs;
 
 namespace MilMap.CLI;
 
@@ -189,34 +191,84 @@ Examples:
             // Apply config defaults
             options = config.ApplyTo(options);
 
-            // Handle installation lookup with fuzzy matching
+            // Resolve bounding box from input
+            BoundingBox bounds;
+            string regionDescription;
+
             if (options.Installation is not null)
             {
                 var lookupResult = ResolveInstallation(options.Installation);
                 if (lookupResult is null)
                     return 1;
                 
-                Console.WriteLine($"Generating map: {options.OutputPath}");
-                Console.WriteLine($"  Installation: {lookupResult.InstallationName} ({lookupResult.Branch})");
-                Console.WriteLine($"  Bounds: {lookupResult.BoundingBox.MinLat:F4},{lookupResult.BoundingBox.MinLon:F4} to {lookupResult.BoundingBox.MaxLat:F4},{lookupResult.BoundingBox.MaxLon:F4}");
-                Console.WriteLine($"  Scale: 1:{options.Scale}");
-                Console.WriteLine($"  DPI: {options.Dpi}");
-                Console.WriteLine($"  Format: {options.Format}");
+                bounds = lookupResult.BoundingBox;
+                regionDescription = $"{lookupResult.InstallationName} ({lookupResult.Branch})";
+            }
+            else if (options.Mgrs is not null)
+            {
+                var mgrsResult = MgrsInputHandler.Parse(options.Mgrs);
+                bounds = mgrsResult.BoundingBox;
+                regionDescription = $"MGRS {options.Mgrs}";
+            }
+            else if (options.Bounds is not null)
+            {
+                var boundsResult = LatLonInputHandler.Parse(options.Bounds);
+                bounds = boundsResult.BoundingBox;
+                regionDescription = $"Bounds {options.Bounds}";
             }
             else
             {
-                Console.WriteLine($"Generating map: {options.OutputPath}");
-                Console.WriteLine($"  Region: {options.GetRegionInputType()} = {options.Mgrs ?? options.Bounds ?? options.Installation}");
-                Console.WriteLine($"  Scale: 1:{options.Scale}");
-                Console.WriteLine($"  DPI: {options.Dpi}");
-                Console.WriteLine($"  Format: {options.Format}");
+                Console.Error.WriteLine("Error: No region specified");
+                return 1;
             }
+
+            Console.WriteLine($"Generating map: {options.OutputPath}");
+            Console.WriteLine($"  Region: {regionDescription}");
+            Console.WriteLine($"  Bounds: {bounds.MinLat:F4},{bounds.MinLon:F4} to {bounds.MaxLat:F4},{bounds.MaxLon:F4}");
+            Console.WriteLine($"  Scale: 1:{options.Scale}");
+            Console.WriteLine($"  DPI: {options.Dpi}");
+            Console.WriteLine($"  Format: {options.Format}");
             
             if (options.CacheDir is not null)
                 Console.WriteLine($"  Cache: {options.CacheDir}");
 
-            // TODO: Implement actual map generation
-            return 0;
+            Console.WriteLine();
+
+            // Generate the map
+            var generatorOptions = new MapGeneratorOptions
+            {
+                Bounds = bounds,
+                Scale = options.Scale,
+                Dpi = options.Dpi,
+                OutputPath = options.OutputPath,
+                Format = options.Format switch
+                {
+                    OutputFormat.Pdf => MapOutputFormat.Pdf,
+                    OutputFormat.Png => MapOutputFormat.Png,
+                    OutputFormat.GeoTiff => MapOutputFormat.GeoTiff,
+                    _ => MapOutputFormat.Pdf
+                },
+                Title = regionDescription,
+                CacheDirectory = options.CacheDir
+            };
+
+            var progress = ConsoleProgress.ForSteps();
+            
+            using var generator = new MapGenerator(options.CacheDir);
+            var result = generator.GenerateAsync(generatorOptions, progress).GetAwaiter().GetResult();
+
+            if (result.Success)
+            {
+                progress.Complete($"Map saved to {result.OutputPath}");
+                Console.WriteLine($"  Tiles: {result.TilesDownloaded} downloaded, {result.TilesFromCache} from cache");
+                Console.WriteLine($"  Duration: {result.Duration.TotalSeconds:F1}s");
+                return 0;
+            }
+            else
+            {
+                Console.Error.WriteLine($"Error: {result.ErrorMessage}");
+                return 1;
+            }
         });
 
         return rootCommand;
@@ -543,19 +595,80 @@ Examples:
                 return 1;
             }
 
-            // Display what would be generated
+            // Resolve bounding box from input
+            BoundingBox bounds;
+            string regionDescription;
+
+            if (options.Installation is not null)
+            {
+                if (!InstallationInputHandler.TryLookup(options.Installation, out var lookupResult) || lookupResult is null)
+                {
+                    Console.Error.WriteLine($"Error: Installation not found: {options.Installation}");
+                    return 1;
+                }
+                bounds = lookupResult.BoundingBox;
+                regionDescription = $"{lookupResult.InstallationName} ({lookupResult.Branch})";
+            }
+            else if (options.Mgrs is not null)
+            {
+                var mgrsResult = MgrsInputHandler.Parse(options.Mgrs);
+                bounds = mgrsResult.BoundingBox;
+                regionDescription = $"MGRS {options.Mgrs}";
+            }
+            else if (options.Bounds is not null)
+            {
+                var boundsResult = LatLonInputHandler.Parse(options.Bounds);
+                bounds = boundsResult.BoundingBox;
+                regionDescription = $"Bounds {options.Bounds}";
+            }
+            else
+            {
+                Console.Error.WriteLine("Error: No region specified");
+                return 1;
+            }
+
             Console.WriteLine();
             Console.WriteLine($"Generating map: {options.OutputPath}");
-            Console.WriteLine($"  Region: {options.GetRegionInputType()} = {options.Mgrs ?? options.Bounds ?? options.Installation}");
+            Console.WriteLine($"  Region: {regionDescription}");
             Console.WriteLine($"  Scale: 1:{options.Scale}");
             Console.WriteLine($"  DPI: {options.Dpi}");
             Console.WriteLine($"  Format: {options.Format}");
-
-            // TODO: Implement actual map generation
             Console.WriteLine();
-            Console.WriteLine("Map generation complete!");
 
-            return 0;
+            var generatorOptions = new MapGeneratorOptions
+            {
+                Bounds = bounds,
+                Scale = options.Scale,
+                Dpi = options.Dpi,
+                OutputPath = options.OutputPath,
+                Format = options.Format switch
+                {
+                    OutputFormat.Pdf => MapOutputFormat.Pdf,
+                    OutputFormat.Png => MapOutputFormat.Png,
+                    OutputFormat.GeoTiff => MapOutputFormat.GeoTiff,
+                    _ => MapOutputFormat.Pdf
+                },
+                Title = regionDescription,
+                CacheDirectory = options.CacheDir
+            };
+
+            var progress = ConsoleProgress.ForSteps();
+            
+            using var generator = new MapGenerator(options.CacheDir);
+            var result = generator.GenerateAsync(generatorOptions, progress).GetAwaiter().GetResult();
+
+            if (result.Success)
+            {
+                progress.Complete($"Map saved to {result.OutputPath}");
+                Console.WriteLine($"  Tiles: {result.TilesDownloaded} downloaded, {result.TilesFromCache} from cache");
+                Console.WriteLine($"  Duration: {result.Duration.TotalSeconds:F1}s");
+                return 0;
+            }
+            else
+            {
+                Console.Error.WriteLine($"Error: {result.ErrorMessage}");
+                return 1;
+            }
         });
 
         return interactiveCommand;
