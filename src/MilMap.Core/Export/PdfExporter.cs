@@ -252,6 +252,7 @@ public class PdfExporter
             {
                 row.RelativeItem().AlignLeft().AlignBottom()
                     .MaxHeight(40)
+                    .Shrink()
                     .Image(scaleBarBytes)
                     .FitArea();
             }

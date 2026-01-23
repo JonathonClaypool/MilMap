@@ -371,47 +371,64 @@ public class MultiPagePdfExporter
     {
         container.Column(column =>
         {
-            // Draw grid overview
-            column.Item().AlignCenter().Row(row =>
+            // For large layouts, show a simplified grid or skip the visual grid
+            if (layout.Columns <= 10 && layout.Rows <= 15)
             {
-                row.AutoItem().Border(1).Padding(5).Column(grid =>
+                // Draw grid overview (only for smaller layouts that fit on page)
+                column.Item().AlignCenter().Row(row =>
                 {
-                    for (int r = 0; r < layout.Rows; r++)
+                    row.AutoItem().Border(1).Padding(5).Column(grid =>
                     {
-                        grid.Item().Row(gridRow =>
+                        for (int r = 0; r < layout.Rows; r++)
                         {
-                            for (int c = 0; c < layout.Columns; c++)
+                            grid.Item().Row(gridRow =>
                             {
-                                var sheet = layout.Sheets[r * layout.Columns + c];
-                                gridRow.AutoItem()
-                                    .Border(1)
-                                    .Width(60)
-                                    .Height(40)
-                                    .AlignCenter()
-                                    .AlignMiddle()
-                                    .Text(sheet.SheetId)
-                                    .FontSize(12)
-                                    .Bold();
-                            }
+                                for (int c = 0; c < layout.Columns; c++)
+                                {
+                                    var sheet = layout.Sheets[r * layout.Columns + c];
+                                    gridRow.AutoItem()
+                                        .Border(1)
+                                        .Width(60)
+                                        .Height(40)
+                                        .AlignCenter()
+                                        .AlignMiddle()
+                                        .Text(sheet.SheetId)
+                                        .FontSize(12)
+                                        .Bold();
+                                }
+                            });
+                        }
+                    });
+                });
+
+                column.Item().PaddingTop(20);
+
+                // Sheet listing with coordinates (only if fits)
+                if (layout.TotalSheets <= 50)
+                {
+                    column.Item().Text("Sheet Details:").FontSize(12).Bold();
+                    column.Item().PaddingTop(5);
+
+                    foreach (var sheet in layout.Sheets)
+                    {
+                        column.Item().Text(text =>
+                        {
+                            text.Span($"Sheet {sheet.SheetId}: ").Bold().FontSize(9);
+                            text.Span($"{sheet.MinLat:F4}°N to {sheet.MaxLat:F4}°N, ").FontSize(9);
+                            text.Span($"{sheet.MinLon:F4}°E to {sheet.MaxLon:F4}°E").FontSize(9);
                         });
                     }
-                });
-            });
-
-            column.Item().PaddingTop(20);
-
-            // Sheet listing with coordinates
-            column.Item().Text("Sheet Details:").FontSize(12).Bold();
-            column.Item().PaddingTop(5);
-
-            foreach (var sheet in layout.Sheets)
+                }
+            }
+            else
             {
-                column.Item().Text(text =>
-                {
-                    text.Span($"Sheet {sheet.SheetId}: ").Bold().FontSize(9);
-                    text.Span($"{sheet.MinLat:F4}°N to {sheet.MaxLat:F4}°N, ").FontSize(9);
-                    text.Span($"{sheet.MinLon:F4}°E to {sheet.MaxLon:F4}°E").FontSize(9);
-                });
+                // Large layout - show summary only
+                column.Item().Text("Sheet Grid Layout:").FontSize(12).Bold();
+                column.Item().PaddingTop(5);
+                column.Item().Text($"Columns: A through {(char)('A' + layout.Columns - 1)}").FontSize(10);
+                column.Item().Text($"Rows: 1 through {layout.Rows}").FontSize(10);
+                column.Item().PaddingTop(10);
+                column.Item().Text("Sheet IDs follow the pattern: Column letter + Row number (e.g., A1, B2, M30)").FontSize(9);
             }
 
             if (!string.IsNullOrEmpty(_options.ScaleText))
@@ -479,7 +496,8 @@ public class MultiPagePdfExporter
             data.SaveTo(stream);
         }
 
-        container.Image(stream.ToArray()).FitArea();
+        // Use Shrink() to prevent the image from expanding beyond available space
+        container.Shrink().Image(stream.ToArray()).FitArea();
     }
 
     private void ComposeSheetFooter(IContainer container, MapSheet sheet, MultiPageLayout layout)
@@ -547,7 +565,7 @@ public class MultiPagePdfExporter
                         data.SaveTo(stream);
                     }
 
-                    row.RelativeItem().AlignLeft().MaxHeight(35)
+                    row.RelativeItem().AlignLeft().MaxHeight(35).Shrink()
                         .Image(stream.ToArray()).FitArea();
                 }
                 else
