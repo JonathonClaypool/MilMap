@@ -248,4 +248,27 @@ public class PdfExporterTests
         var exporter = new PdfExporter(options);
         Assert.NotNull(exporter);
     }
+
+    [Theory]
+    [InlineData(2000, 100)]   // Very wide image
+    [InlineData(100, 2000)]   // Very tall image
+    [InlineData(5000, 5000)]  // Large square image
+    [InlineData(50, 50)]      // Small square image
+    public void ExportToBytes_ExtremeAspectRatios_DoesNotThrow(int width, int height)
+    {
+        // Regression test for QuestPDF conflicting size constraints error
+        using var mapBitmap = CreateTestBitmap(width, height);
+        var options = new PdfExportOptions
+        {
+            Title = "Test Map",
+            PageSize = PageSize.Letter,
+            Orientation = PageOrientation.Landscape
+        };
+        var exporter = new PdfExporter(options);
+
+        var pdfBytes = exporter.ExportToBytes(mapBitmap, null);
+
+        Assert.NotNull(pdfBytes);
+        Assert.True(pdfBytes.Length > 0);
+    }
 }

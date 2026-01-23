@@ -233,7 +233,13 @@ public class PdfExporter
 
     private void ComposeContent(IContainer container, byte[] mapImageBytes)
     {
-        container.Image(mapImageBytes)
+        // Use Shrink() to prevent the image from expanding beyond available space,
+        // then FitArea() to scale proportionally within the constrained area.
+        // This avoids QuestPDF constraint conflicts that occur when FitArea() 
+        // encounters images whose aspect ratio conflicts with the page layout.
+        container
+            .Shrink()
+            .Image(mapImageBytes)
             .FitArea();
     }
 
