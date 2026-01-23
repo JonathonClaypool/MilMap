@@ -56,6 +56,21 @@ public class MapOptions
     public string? CacheDir { get; set; }
 
     /// <summary>
+    /// Force multi-page PDF output. If null, auto-detects based on map size.
+    /// </summary>
+    public bool? MultiPage { get; set; }
+
+    /// <summary>
+    /// Page size for PDF output (letter, legal, tabloid, a4, a3).
+    /// </summary>
+    public string? PageSize { get; set; }
+
+    /// <summary>
+    /// Page orientation for PDF output (portrait, landscape).
+    /// </summary>
+    public string? Orientation { get; set; }
+
+    /// <summary>
     /// Gets the region input type that was specified.
     /// </summary>
     public RegionInputType GetRegionInputType()

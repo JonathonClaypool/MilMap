@@ -1,5 +1,6 @@
 using System.CommandLine;
 using MilMap.Core;
+using MilMap.Core.Export;
 using MilMap.Core.Input;
 using MilMap.Core.Mgrs;
 
@@ -74,6 +75,26 @@ public static class CommandLineParser
             Description = "Directory for caching downloaded tiles"
         };
 
+        var multiPageOption = new Option<bool?>("--multi-page")
+        {
+            Description = "Force multi-page PDF output. If not specified, auto-detects based on map size."
+        };
+
+        var singlePageOption = new Option<bool>("--single-page")
+        {
+            Description = "Force single-page PDF output (disables auto-detection)"
+        };
+
+        var pageSizeOption = new Option<string?>("--page-size")
+        {
+            Description = "Page size for PDF output (letter, legal, tabloid, a4, a3)"
+        };
+
+        var orientationOption = new Option<string?>("--orientation")
+        {
+            Description = "Page orientation for PDF output (portrait, landscape)"
+        };
+
         var configOption = new Option<FileInfo?>("--config")
         {
             Description = "Path to configuration file (YAML or JSON)"
@@ -88,6 +109,10 @@ public static class CommandLineParser
         rootCommand.Options.Add(dpiOption);
         rootCommand.Options.Add(formatOption);
         rootCommand.Options.Add(cacheDirOption);
+        rootCommand.Options.Add(multiPageOption);
+        rootCommand.Options.Add(singlePageOption);
+        rootCommand.Options.Add(pageSizeOption);
+        rootCommand.Options.Add(orientationOption);
         rootCommand.Options.Add(configOption);
 
         // Add subcommands
@@ -110,6 +135,12 @@ Examples:
 
   milmap output.pdf --installation ""Fort Liberty"" --scale 100000
     Generate a map for a military installation
+
+  milmap output.pdf --installation ""Camp Ripley"" --scale 5000 --multi-page
+    Generate a multi-page PDF for a large detailed map
+
+  milmap output.pdf --mgrs 18TXM --page-size a3 --orientation landscape
+    Generate a map with specific page size and orientation
 
   milmap installations search ""Fort""
     Search for installations matching 'Fort'
@@ -185,8 +216,22 @@ Examples:
                 Scale = parseResult.GetValue(scaleOption),
                 Dpi = parseResult.GetValue(dpiOption),
                 Format = parseResult.GetValue(formatOption),
-                CacheDir = parseResult.GetValue(cacheDirOption)?.FullName
+                CacheDir = parseResult.GetValue(cacheDirOption)?.FullName,
+                PageSize = parseResult.GetValue(pageSizeOption),
+                Orientation = parseResult.GetValue(orientationOption)
             };
+
+            // Handle multi-page options
+            var multiPageValue = parseResult.GetValue(multiPageOption);
+            var singlePageValue = parseResult.GetValue(singlePageOption);
+            if (singlePageValue)
+            {
+                options.MultiPage = false;
+            }
+            else if (multiPageValue.HasValue)
+            {
+                options.MultiPage = multiPageValue.Value;
+            }
 
             // Apply config defaults
             options = config.ApplyTo(options);
@@ -231,8 +276,14 @@ Examples:
             
             if (options.CacheDir is not null)
                 Console.WriteLine($"  Cache: {options.CacheDir}");
+            if (options.MultiPage.HasValue)
+                Console.WriteLine($"  Multi-page: {(options.MultiPage.Value ? "enabled" : "disabled")}");
 
             Console.WriteLine();
+
+            // Parse page size and orientation
+            var pageSize = ParsePageSize(options.PageSize);
+            var orientation = ParseOrientation(options.Orientation);
 
             // Generate the map
             var generatorOptions = new MapGeneratorOptions
@@ -249,7 +300,10 @@ Examples:
                     _ => MapOutputFormat.Pdf
                 },
                 Title = regionDescription,
-                CacheDirectory = options.CacheDir
+                CacheDirectory = options.CacheDir,
+                MultiPage = options.MultiPage,
+                PageSize = pageSize,
+                Orientation = orientation
             };
 
             var progress = ConsoleProgress.ForSteps();
@@ -681,5 +735,40 @@ Examples:
     {
         var rootCommand = CreateRootCommand();
         return rootCommand.Parse(args).Invoke();
+    }
+
+    /// <summary>
+    /// Parses a page size string into a PageSize enum value.
+    /// </summary>
+    private static PageSize ParsePageSize(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return PageSize.Letter;
+
+        return value.ToLowerInvariant() switch
+        {
+            "letter" => PageSize.Letter,
+            "legal" => PageSize.Legal,
+            "tabloid" => PageSize.Tabloid,
+            "a4" => PageSize.A4,
+            "a3" => PageSize.A3,
+            _ => PageSize.Letter
+        };
+    }
+
+    /// <summary>
+    /// Parses an orientation string into a PageOrientation enum value.
+    /// </summary>
+    private static PageOrientation ParseOrientation(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return PageOrientation.Landscape;
+
+        return value.ToLowerInvariant() switch
+        {
+            "portrait" => PageOrientation.Portrait,
+            "landscape" => PageOrientation.Landscape,
+            _ => PageOrientation.Landscape
+        };
     }
 }
