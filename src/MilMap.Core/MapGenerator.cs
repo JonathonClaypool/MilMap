@@ -126,6 +126,26 @@ public class MapGenerator : IDisposable
                 Console.WriteLine($"  Warning: {zoomResult.Warning}");
             }
 
+            // Pre-flight validation: check memory requirements before proceeding
+            using var tempRenderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
+            var (outputWidth, outputHeight) = tempRenderer.CalculateOutputDimensions(
+                options.Bounds.MinLat,
+                options.Bounds.MaxLat,
+                options.Bounds.MinLon,
+                options.Bounds.MaxLon,
+                zoomResult.Zoom);
+
+            var (memoryBytes, pixelCount, memoryFormatted) = BaseMapRenderer.CalculateMemoryRequirements(outputWidth, outputHeight);
+
+            if (memoryBytes > BaseMapRenderer.DefaultMaxMemoryBytes)
+            {
+                return new MapGeneratorResult(
+                    false,
+                    options.OutputPath,
+                    $"Map requires {memoryFormatted} of memory ({outputWidth:N0}x{outputHeight:N0} pixels, {pixelCount:N0} total), which exceeds the 2 GB limit. " +
+                    $"Try: (1) Use a smaller scale (e.g., 1:{options.Scale * 2:N0}), (2) Reduce DPI (current: {options.Dpi}), or (3) Select a smaller area.");
+            }
+
             // Step 2: Fetch tiles
             progress?.Report(new ProgressInfo
             {

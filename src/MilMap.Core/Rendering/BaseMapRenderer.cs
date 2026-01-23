@@ -206,6 +206,32 @@ public class BaseMapRenderer : IDisposable
         return (width, height);
     }
 
+    /// <summary>
+    /// Calculates the estimated memory requirements for rendering a map.
+    /// </summary>
+    /// <param name="width">Width in pixels.</param>
+    /// <param name="height">Height in pixels.</param>
+    /// <returns>Memory requirements in bytes and formatted string.</returns>
+    public static (long Bytes, long PixelCount, string FormattedSize) CalculateMemoryRequirements(int width, int height)
+    {
+        // SKBitmap uses 4 bytes per pixel (RGBA)
+        const int BytesPerPixel = 4;
+        long pixelCount = (long)width * height;
+        long bytes = pixelCount * BytesPerPixel;
+        string formatted = bytes switch
+        {
+            >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F1} GB",
+            >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
+            _ => $"{bytes / 1024.0:F1} KB"
+        };
+        return (bytes, pixelCount, formatted);
+    }
+
+    /// <summary>
+    /// Default maximum memory for bitmap allocation (2 GB).
+    /// </summary>
+    public const long DefaultMaxMemoryBytes = 2L * 1024 * 1024 * 1024;
+
     private (SKRect cropRect, int width, int height) CalculateCropRegion(
         double minLat, double maxLat,
         double minLon, double maxLon,

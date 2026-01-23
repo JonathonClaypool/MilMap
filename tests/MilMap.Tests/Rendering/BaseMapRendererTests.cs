@@ -198,4 +198,31 @@ public class BaseMapRendererTests
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
     }
+
+    [Fact]
+    public void CalculateMemoryRequirements_SmallImage_ReturnsCorrectSize()
+    {
+        var (bytes, pixelCount, formatted) = BaseMapRenderer.CalculateMemoryRequirements(1000, 1000);
+
+        Assert.Equal(1_000_000, pixelCount);
+        Assert.Equal(4_000_000, bytes); // 4 bytes per pixel
+        Assert.Contains("MB", formatted);
+    }
+
+    [Fact]
+    public void CalculateMemoryRequirements_LargeImage_ReturnsGBFormat()
+    {
+        // 32805 x 49962 pixels = ~1.64 billion pixels (from bug report)
+        var (bytes, pixelCount, formatted) = BaseMapRenderer.CalculateMemoryRequirements(32805, 49962);
+
+        Assert.True(pixelCount > 1_000_000_000, "Should be over 1 billion pixels");
+        Assert.True(bytes > BaseMapRenderer.DefaultMaxMemoryBytes, "Should exceed default limit");
+        Assert.Contains("GB", formatted);
+    }
+
+    [Fact]
+    public void DefaultMaxMemoryBytes_Is2GB()
+    {
+        Assert.Equal(2L * 1024 * 1024 * 1024, BaseMapRenderer.DefaultMaxMemoryBytes);
+    }
 }
