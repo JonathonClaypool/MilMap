@@ -50,6 +50,22 @@ public class MapGeneratorOptions
     /// Cache directory for tiles. If null, uses system default.
     /// </summary>
     public string? CacheDirectory { get; set; }
+
+    /// <summary>
+    /// Enable multi-page PDF output for large maps.
+    /// When true, automatically splits the map into multiple pages.
+    /// </summary>
+    public bool MultiPage { get; set; }
+
+    /// <summary>
+    /// Page size for PDF output.
+    /// </summary>
+    public PageSize PageSize { get; set; } = PageSize.Letter;
+
+    /// <summary>
+    /// Page orientation for PDF output.
+    /// </summary>
+    public PageOrientation Orientation { get; set; } = PageOrientation.Landscape;
 }
 
 /// <summary>
@@ -127,23 +143,27 @@ public class MapGenerator : IDisposable
             }
 
             // Pre-flight validation: check memory requirements before proceeding
-            using var tempRenderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
-            var (outputWidth, outputHeight) = tempRenderer.CalculateOutputDimensions(
-                options.Bounds.MinLat,
-                options.Bounds.MaxLat,
-                options.Bounds.MinLon,
-                options.Bounds.MaxLon,
-                zoomResult.Zoom);
-
-            var (memoryBytes, pixelCount, memoryFormatted) = BaseMapRenderer.CalculateMemoryRequirements(outputWidth, outputHeight);
-
-            if (memoryBytes > BaseMapRenderer.DefaultMaxMemoryBytes)
+            // Skip for multi-page mode which renders sheets individually
+            if (!options.MultiPage)
             {
-                return new MapGeneratorResult(
-                    false,
-                    options.OutputPath,
-                    $"Map requires {memoryFormatted} of memory ({outputWidth:N0}x{outputHeight:N0} pixels, {pixelCount:N0} total), which exceeds the 2 GB limit. " +
-                    $"Try: (1) Use a smaller scale (e.g., 1:{options.Scale * 2:N0}), (2) Reduce DPI (current: {options.Dpi}), or (3) Select a smaller area.");
+                using var tempRenderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
+                var (outputWidth, outputHeight) = tempRenderer.CalculateOutputDimensions(
+                    options.Bounds.MinLat,
+                    options.Bounds.MaxLat,
+                    options.Bounds.MinLon,
+                    options.Bounds.MaxLon,
+                    zoomResult.Zoom);
+
+                var (memoryBytes, pixelCount, memoryFormatted) = BaseMapRenderer.CalculateMemoryRequirements(outputWidth, outputHeight);
+
+                if (memoryBytes > BaseMapRenderer.DefaultMaxMemoryBytes)
+                {
+                    return new MapGeneratorResult(
+                        false,
+                        options.OutputPath,
+                        $"Map requires {memoryFormatted} of memory ({outputWidth:N0}x{outputHeight:N0} pixels, {pixelCount:N0} total), which exceeds the 2 GB limit. " +
+                        $"Try: (1) Use --multi-page for automatic sheet splitting, (2) Use a smaller scale (e.g., 1:{options.Scale * 2:N0}), (3) Reduce DPI (current: {options.Dpi}), or (4) Select a smaller area.");
+                }
             }
 
             // Step 2: Fetch tiles
@@ -193,17 +213,6 @@ public class MapGenerator : IDisposable
                 StepDescription = "Rendering map"
             });
 
-            using var renderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
-            var mapImageBytes = renderer.RenderMap(
-                tileResult.Tiles,
-                options.Bounds.MinLat,
-                options.Bounds.MaxLat,
-                options.Bounds.MinLon,
-                options.Bounds.MaxLon,
-                zoomResult.Zoom);
-
-            using var mapBitmap = SKBitmap.Decode(mapImageBytes);
-
             // Step 4: Export
             progress?.Report(new ProgressInfo
             {
@@ -212,7 +221,26 @@ public class MapGenerator : IDisposable
                 StepDescription = "Exporting to file"
             });
 
-            ExportMap(mapBitmap, options);
+            if (options.MultiPage && options.Format == MapOutputFormat.Pdf)
+            {
+                // Multi-page mode: render each sheet separately to avoid memory issues
+                ExportMultiPagePdf(tileResult.Tiles, zoomResult.Zoom, options);
+            }
+            else
+            {
+                // Single-page mode: render entire map
+                using var renderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
+                var mapImageBytes = renderer.RenderMap(
+                    tileResult.Tiles,
+                    options.Bounds.MinLat,
+                    options.Bounds.MaxLat,
+                    options.Bounds.MinLon,
+                    options.Bounds.MaxLon,
+                    zoomResult.Zoom);
+
+                using var mapBitmap = SKBitmap.Decode(mapImageBytes);
+                ExportMap(mapBitmap, options);
+            }
 
             var duration = DateTime.UtcNow - startTime;
 
@@ -290,6 +318,77 @@ public class MapGenerator : IDisposable
 
         var exporter = new ImageExporter(imageOptions);
         exporter.Export(mapBitmap, options.OutputPath);
+    }
+
+    private void ExportMultiPagePdf(IReadOnlyList<TileData> tiles, int zoom, MapGeneratorOptions options)
+    {
+        var multiPageOptions = new MultiPagePdfOptions
+        {
+            Dpi = options.Dpi,
+            Title = options.Title,
+            ScaleText = $"1:{options.Scale:N0}",
+            PageSize = options.PageSize,
+            Orientation = options.Orientation,
+            IncludeIndexPage = true,
+            IncludeSheetLabels = true,
+            IncludeAdjacentReferences = true
+        };
+
+        var multiExporter = new MultiPagePdfExporter(multiPageOptions);
+
+        // Calculate the layout
+        var layout = multiExporter.CalculateLayout(
+            options.Bounds.MinLat,
+            options.Bounds.MaxLat,
+            options.Bounds.MinLon,
+            options.Bounds.MaxLon,
+            options.Scale);
+
+        // Render each sheet individually to avoid memory issues
+        using var renderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
+
+        foreach (var sheet in layout.Sheets)
+        {
+            // Filter tiles that overlap with this sheet's bounds
+            var sheetTiles = tiles.Where(t => TileOverlapsSheet(t, sheet, zoom)).ToList();
+
+            if (sheetTiles.Count > 0)
+            {
+                var sheetImageBytes = renderer.RenderMap(
+                    sheetTiles,
+                    sheet.MinLat,
+                    sheet.MaxLat,
+                    sheet.MinLon,
+                    sheet.MaxLon,
+                    zoom);
+
+                sheet.MapImage = SKBitmap.Decode(sheetImageBytes);
+            }
+        }
+
+        // Export the multi-page PDF
+        multiExporter.Export(layout, options.OutputPath);
+
+        // Clean up sheet images
+        foreach (var sheet in layout.Sheets)
+        {
+            sheet.MapImage?.Dispose();
+        }
+    }
+
+    private static bool TileOverlapsSheet(TileData tile, MapSheet sheet, int zoom)
+    {
+        // Calculate tile bounds
+        int n = 1 << zoom;
+        double tileMinLon = tile.X * 360.0 / n - 180.0;
+        double tileMaxLon = (tile.X + 1) * 360.0 / n - 180.0;
+
+        double tileMaxLat = Math.Atan(Math.Sinh(Math.PI * (1 - 2.0 * tile.Y / n))) * 180.0 / Math.PI;
+        double tileMinLat = Math.Atan(Math.Sinh(Math.PI * (1 - 2.0 * (tile.Y + 1) / n))) * 180.0 / Math.PI;
+
+        // Check for overlap
+        return !(tileMaxLon < sheet.MinLon || tileMinLon > sheet.MaxLon ||
+                 tileMaxLat < sheet.MinLat || tileMinLat > sheet.MaxLat);
     }
 
     public void Dispose()
