@@ -54,8 +54,9 @@ public class MapGeneratorOptions
     /// <summary>
     /// Enable multi-page PDF output for large maps.
     /// When true, automatically splits the map into multiple pages.
+    /// When null (default), auto-detects based on map size vs page dimensions.
     /// </summary>
-    public bool MultiPage { get; set; }
+    public bool? MultiPage { get; set; }
 
     /// <summary>
     /// Page size for PDF output.
@@ -142,9 +143,22 @@ public class MapGenerator : IDisposable
                 Console.WriteLine($"  Warning: {zoomResult.Warning}");
             }
 
+            // Determine if multi-page mode should be used
+            bool useMultiPage = options.MultiPage ?? false;
+
+            // Auto-detect multi-page for PDF format when not explicitly set
+            if (options.Format == MapOutputFormat.Pdf && options.MultiPage == null)
+            {
+                useMultiPage = ShouldUseMultiPage(options);
+                if (useMultiPage)
+                {
+                    Console.WriteLine("  Auto-enabled multi-page output (map exceeds page dimensions)");
+                }
+            }
+
             // Pre-flight validation: check memory requirements before proceeding
             // Skip for multi-page mode which renders sheets individually
-            if (!options.MultiPage)
+            if (!useMultiPage)
             {
                 using var tempRenderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
                 var (outputWidth, outputHeight) = tempRenderer.CalculateOutputDimensions(
@@ -221,7 +235,7 @@ public class MapGenerator : IDisposable
                 StepDescription = "Exporting to file"
             });
 
-            if (options.MultiPage && options.Format == MapOutputFormat.Pdf)
+            if (useMultiPage && options.Format == MapOutputFormat.Pdf)
             {
                 // Multi-page mode: render each sheet separately to avoid memory issues
                 ExportMultiPagePdf(tileResult.Tiles, zoomResult.Zoom, options);
@@ -389,6 +403,82 @@ public class MapGenerator : IDisposable
         // Check for overlap
         return !(tileMaxLon < sheet.MinLon || tileMinLon > sheet.MaxLon ||
                  tileMaxLat < sheet.MinLat || tileMinLat > sheet.MaxLat);
+    }
+
+    /// <summary>
+    /// Determines if multi-page mode should be automatically enabled based on map size vs page dimensions.
+    /// </summary>
+    private static bool ShouldUseMultiPage(MapGeneratorOptions options)
+    {
+        const double MetersPerDegreeLatitude = 111320;
+
+        // Calculate area dimensions in meters
+        double centerLat = (options.Bounds.MinLat + options.Bounds.MaxLat) / 2;
+        double metersPerDegreeLon = MetersPerDegreeLatitude * Math.Cos(centerLat * Math.PI / 180);
+
+        double areaWidthMeters = (options.Bounds.MaxLon - options.Bounds.MinLon) * metersPerDegreeLon;
+        double areaHeightMeters = (options.Bounds.MaxLat - options.Bounds.MinLat) * MetersPerDegreeLatitude;
+
+        // Calculate print dimensions at scale (in inches)
+        const double MetersPerInch = 0.0254;
+        double printWidthInches = areaWidthMeters / options.Scale / MetersPerInch;
+        double printHeightInches = areaHeightMeters / options.Scale / MetersPerInch;
+
+        // Get page dimensions (in inches)
+        var (pageWidth, pageHeight) = GetPageDimensionsInches(options.PageSize, options.Orientation);
+
+        // Account for margins (0.5 inch on each side)
+        const float marginInches = 0.5f;
+        float printableWidth = pageWidth - 2 * marginInches;
+        float printableHeight = pageHeight - 2 * marginInches;
+
+        // If print dimensions exceed page dimensions, use multi-page
+        return printWidthInches > printableWidth || printHeightInches > printableHeight;
+    }
+
+    private static (float width, float height) GetPageDimensionsInches(PageSize pageSize, PageOrientation orientation)
+    {
+        float width, height;
+
+        switch (pageSize)
+        {
+            case PageSize.Letter:
+                width = 8.5f;
+                height = 11f;
+                break;
+            case PageSize.Legal:
+                width = 8.5f;
+                height = 14f;
+                break;
+            case PageSize.Tabloid:
+                width = 11f;
+                height = 17f;
+                break;
+            case PageSize.A4:
+                width = 8.27f;
+                height = 11.69f;
+                break;
+            case PageSize.A3:
+                width = 11.69f;
+                height = 16.54f;
+                break;
+            case PageSize.Custom:
+            default:
+                width = 11f;
+                height = 8.5f;
+                break;
+        }
+
+        if (orientation == PageOrientation.Landscape && height > width)
+        {
+            (width, height) = (height, width);
+        }
+        else if (orientation == PageOrientation.Portrait && width > height)
+        {
+            (width, height) = (height, width);
+        }
+
+        return (width, height);
     }
 
     public void Dispose()
