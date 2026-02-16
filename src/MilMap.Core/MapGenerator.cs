@@ -69,6 +69,12 @@ public class MapGeneratorOptions
     /// Page orientation for PDF output.
     /// </summary>
     public PageOrientation Orientation { get; set; } = PageOrientation.Landscape;
+
+    /// <summary>
+    /// When true, overlay military range and impact area boundaries with
+    /// semi-transparent red fills and labels from OSM data.
+    /// </summary>
+    public bool ShowRangeOverlay { get; set; } = false;
 }
 
 /// <summary>
@@ -280,6 +286,12 @@ public class MapGenerator : IDisposable
                 // Apply contour lines from elevation data
                 using var contourBitmap = await ApplyContoursAsync(mapBitmap, options, cancellationToken);
 
+                // Apply range/impact area overlay if enabled
+                if (options.ShowRangeOverlay)
+                {
+                    await ApplyRangeOverlayAsync(contourBitmap, options, cancellationToken);
+                }
+
                 // Apply MGRS grid overlay
                 using var gridBitmap = ApplyMgrsGrid(contourBitmap, options);
 
@@ -465,6 +477,28 @@ public class MapGenerator : IDisposable
     }
 
     /// <summary>
+    /// Fetches military range/impact area data from OSM and renders labeled overlays.
+    /// Falls back gracefully if OSM data is unavailable.
+    /// </summary>
+    private static async Task ApplyRangeOverlayAsync(
+        SKBitmap bitmap, MapGeneratorOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var renderer = new RangeOverlayRenderer();
+            await renderer.RenderRangesAsync(
+                bitmap,
+                options.Bounds.MinLat, options.Bounds.MaxLat,
+                options.Bounds.MinLon, options.Bounds.MaxLon,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Warning: Could not load range overlay data: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Fetches elevation data and draws contour lines on the map.
     /// Falls back gracefully to the unmodified bitmap if elevation data is unavailable.
     /// </summary>
@@ -559,12 +593,19 @@ public class MapGenerator : IDisposable
                 {
                     Bounds = new BoundingBox(sheet.MinLat, sheet.MaxLat, sheet.MinLon, sheet.MaxLon),
                     Scale = options.Scale,
-                    Dpi = options.Dpi
+                    Dpi = options.Dpi,
+                    ShowRangeOverlay = options.ShowRangeOverlay
                 };
                 await ApplyVegetationOverlayAsync(rawBitmap, sheetOptions, cancellationToken);
 
                 // Apply contour lines to each sheet
                 using var contourBitmap = await ApplyContoursAsync(rawBitmap, sheetOptions, cancellationToken);
+
+                // Apply range/impact area overlay if enabled
+                if (options.ShowRangeOverlay)
+                {
+                    await ApplyRangeOverlayAsync(contourBitmap, sheetOptions, cancellationToken);
+                }
 
                 // Apply MGRS grid overlay to each sheet
                 sheet.MapImage = ApplyMgrsGrid(contourBitmap, sheetOptions);

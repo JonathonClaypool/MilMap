@@ -71,6 +71,11 @@ public class MapOptions
     public string? Orientation { get; set; }
 
     /// <summary>
+    /// Show military range and impact area overlays with labels.
+    /// </summary>
+    public bool ShowRangeOverlay { get; set; }
+
+    /// <summary>
     /// Gets the region input type that was specified.
     /// </summary>
     public RegionInputType GetRegionInputType()

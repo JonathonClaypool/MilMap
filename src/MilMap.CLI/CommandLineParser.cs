@@ -100,6 +100,11 @@ public static class CommandLineParser
             Description = "Path to configuration file (YAML or JSON)"
         };
 
+        var rangesOption = new Option<bool>("--ranges")
+        {
+            Description = "Overlay military range and impact area boundaries with labels"
+        };
+
         var rootCommand = new RootCommand("MilMap - Generate military-style topographic maps from OpenStreetMap data");
         rootCommand.Arguments.Add(outputArg);
         rootCommand.Options.Add(mgrsOption);
@@ -114,6 +119,7 @@ public static class CommandLineParser
         rootCommand.Options.Add(pageSizeOption);
         rootCommand.Options.Add(orientationOption);
         rootCommand.Options.Add(configOption);
+        rootCommand.Options.Add(rangesOption);
 
         // Add subcommands
         rootCommand.Subcommands.Add(CreateInstallationsCommand());
@@ -233,6 +239,9 @@ Examples:
                 options.MultiPage = multiPageValue.Value;
             }
 
+            // Handle range overlay
+            options.ShowRangeOverlay = parseResult.GetValue(rangesOption);
+
             // Apply config defaults
             options = config.ApplyTo(options);
 
@@ -306,7 +315,8 @@ Examples:
                 CacheDirectory = options.CacheDir,
                 MultiPage = options.MultiPage,
                 PageSize = pageSize,
-                Orientation = orientation
+                Orientation = orientation,
+                ShowRangeOverlay = options.ShowRangeOverlay
             };
 
             var progress = ConsoleProgress.ForSteps();
@@ -713,7 +723,8 @@ Examples:
                 CacheDirectory = options.CacheDir,
                 MultiPage = options.MultiPage,
                 PageSize = ParsePageSize(options.PageSize),
-                Orientation = ParseOrientation(options.Orientation)
+                Orientation = ParseOrientation(options.Orientation),
+                ShowRangeOverlay = options.ShowRangeOverlay
             };
 
             var progress = ConsoleProgress.ForSteps();
