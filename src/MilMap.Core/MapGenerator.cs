@@ -331,6 +331,23 @@ public class MapGenerator : IDisposable
 
     private void ExportPng(SKBitmap mapBitmap, MapGeneratorOptions options)
     {
+        // Add title, scale bar, and metadata margins directly into the image
+        var marginOptions = new MapMarginOptions
+        {
+            Title = options.Title,
+            ScaleRatio = options.Scale,
+            Dpi = options.Dpi,
+            CenterLat = options.Bounds.CenterLat,
+            CenterLon = options.Bounds.CenterLon,
+            ShowScaleBar = true,
+            ShowDeclination = true,
+            ShowDatum = true,
+            ShowDate = true
+        };
+
+        var marginRenderer = new MapMarginRenderer(marginOptions);
+        using var finalBitmap = marginRenderer.AddMargins(mapBitmap);
+
         var imageOptions = new ImageExportOptions
         {
             Format = ImageFormat.Png,
@@ -339,7 +356,7 @@ public class MapGenerator : IDisposable
         };
 
         var exporter = new ImageExporter(imageOptions);
-        exporter.Export(mapBitmap, options.OutputPath);
+        exporter.Export(finalBitmap, options.OutputPath);
     }
 
     private void ExportGeoTiff(SKBitmap mapBitmap, MapGeneratorOptions options)
