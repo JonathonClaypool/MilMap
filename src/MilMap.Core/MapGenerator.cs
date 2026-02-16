@@ -256,6 +256,12 @@ public class MapGenerator : IDisposable
 
                 using var mapBitmap = SKBitmap.Decode(mapImageBytes);
 
+                // Remove military hatching/fill from tile rendering
+                TilePostProcessor.RemoveMilitaryHatching(mapBitmap);
+
+                // Apply vegetation overlay from OSM data
+                await ApplyVegetationOverlayAsync(mapBitmap, options, cancellationToken);
+
                 // Apply contour lines from elevation data
                 using var contourBitmap = await ApplyContoursAsync(mapBitmap, options, cancellationToken);
 
@@ -422,6 +428,28 @@ public class MapGenerator : IDisposable
     }
 
     /// <summary>
+    /// Fetches vegetation/terrain features from OSM and renders them as overlays.
+    /// Falls back gracefully if OSM data is unavailable.
+    /// </summary>
+    private static async Task ApplyVegetationOverlayAsync(
+        SKBitmap bitmap, MapGeneratorOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var renderer = new VegetationRenderer();
+            await renderer.RenderVegetationAsync(
+                bitmap,
+                options.Bounds.MinLat, options.Bounds.MaxLat,
+                options.Bounds.MinLon, options.Bounds.MaxLon,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Warning: Could not load vegetation data: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Fetches elevation data and draws contour lines on the map.
     /// Falls back gracefully to the unmodified bitmap if elevation data is unavailable.
     /// </summary>
@@ -508,13 +536,19 @@ public class MapGenerator : IDisposable
 
                 using var rawBitmap = SKBitmap.Decode(sheetImageBytes);
 
-                // Apply contour lines to each sheet
+                // Remove military hatching/fill from tile rendering
+                TilePostProcessor.RemoveMilitaryHatching(rawBitmap);
+
+                // Apply vegetation overlay from OSM data
                 var sheetOptions = new MapGeneratorOptions
                 {
                     Bounds = new BoundingBox(sheet.MinLat, sheet.MaxLat, sheet.MinLon, sheet.MaxLon),
                     Scale = options.Scale,
                     Dpi = options.Dpi
                 };
+                await ApplyVegetationOverlayAsync(rawBitmap, sheetOptions, cancellationToken);
+
+                // Apply contour lines to each sheet
                 using var contourBitmap = await ApplyContoursAsync(rawBitmap, sheetOptions, cancellationToken);
 
                 // Apply MGRS grid overlay to each sheet
