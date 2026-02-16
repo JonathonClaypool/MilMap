@@ -8,6 +8,7 @@ using MilMap.Core.Progress;
 using MilMap.Core.Rendering;
 using MilMap.Core.Tiles;
 using SkiaSharp;
+using System.IO;
 
 namespace MilMap.Core;
 
@@ -253,7 +254,16 @@ public class MapGenerator : IDisposable
                     zoomResult.Zoom);
 
                 using var mapBitmap = SKBitmap.Decode(mapImageBytes);
-                ExportMap(mapBitmap, options);
+
+                // Apply MGRS grid overlay
+                using var gridBitmap = ApplyMgrsGrid(mapBitmap, options);
+
+                // Render scale bar
+                var scaleBarResult = RenderScaleBar(options);
+
+                ExportMap(gridBitmap, scaleBarResult, options);
+
+                scaleBarResult.Bitmap.Dispose();
             }
 
             var duration = DateTime.UtcNow - startTime;
@@ -290,25 +300,23 @@ public class MapGenerator : IDisposable
         }
     }
 
-    private void ExportMap(SKBitmap mapBitmap, MapGeneratorOptions options)
+    private void ExportMap(SKBitmap mapBitmap, ScaleBarResult? scaleBar, MapGeneratorOptions options)
     {
         switch (options.Format)
         {
             case MapOutputFormat.Pdf:
-                ExportPdf(mapBitmap, options);
+                ExportPdf(mapBitmap, scaleBar, options);
                 break;
             case MapOutputFormat.Png:
                 ExportPng(mapBitmap, options);
                 break;
             case MapOutputFormat.GeoTiff:
-                // GeoTiff export would require additional metadata
-                // For now, export as regular TIFF/PNG
-                ExportPng(mapBitmap, options);
+                ExportGeoTiff(mapBitmap, options);
                 break;
         }
     }
 
-    private void ExportPdf(SKBitmap mapBitmap, MapGeneratorOptions options)
+    private void ExportPdf(SKBitmap mapBitmap, ScaleBarResult? scaleBar, MapGeneratorOptions options)
     {
         var pdfOptions = new PdfExportOptions
         {
@@ -318,7 +326,7 @@ public class MapGenerator : IDisposable
         };
 
         var exporter = new PdfExporter(pdfOptions);
-        exporter.Export(mapBitmap, null, options.OutputPath);
+        exporter.Export(mapBitmap, scaleBar?.Bitmap, options.OutputPath);
     }
 
     private void ExportPng(SKBitmap mapBitmap, MapGeneratorOptions options)
@@ -332,6 +340,64 @@ public class MapGenerator : IDisposable
 
         var exporter = new ImageExporter(imageOptions);
         exporter.Export(mapBitmap, options.OutputPath);
+    }
+
+    private void ExportGeoTiff(SKBitmap mapBitmap, MapGeneratorOptions options)
+    {
+        var geoTiffOptions = new GeoTiffExportOptions
+        {
+            BoundingBox = options.Bounds,
+            Dpi = options.Dpi
+        };
+
+        var exporter = new GeoTiffExporter(geoTiffOptions);
+        exporter.Export(mapBitmap, options.OutputPath);
+    }
+
+    /// <summary>
+    /// Applies MGRS grid overlay to a rendered map bitmap.
+    /// </summary>
+    private static SKBitmap ApplyMgrsGrid(SKBitmap baseBitmap, MapGeneratorOptions options)
+    {
+        var gridOptions = new MgrsGridOptions
+        {
+            Scale = ScaleToMapScale(options.Scale),
+            ShowLabels = true
+        };
+
+        var gridRenderer = new MgrsGridRenderer(gridOptions);
+        return gridRenderer.DrawGrid(
+            baseBitmap,
+            options.Bounds.MinLat,
+            options.Bounds.MaxLat,
+            options.Bounds.MinLon,
+            options.Bounds.MaxLon);
+    }
+
+    /// <summary>
+    /// Renders a scale bar for the map.
+    /// </summary>
+    private static ScaleBarResult RenderScaleBar(MapGeneratorOptions options)
+    {
+        var scaleBarOptions = new ScaleBarOptions
+        {
+            ScaleRatio = options.Scale,
+            Dpi = options.Dpi
+        };
+
+        var renderer = new ScaleBarRenderer(scaleBarOptions);
+        return renderer.Render();
+    }
+
+    /// <summary>
+    /// Maps a numeric scale denominator to the closest MapScale enum value.
+    /// </summary>
+    private static MapScale ScaleToMapScale(int scale)
+    {
+        if (scale <= 15000) return MapScale.Scale1To10000;
+        if (scale <= 37500) return MapScale.Scale1To25000;
+        if (scale <= 75000) return MapScale.Scale1To50000;
+        return MapScale.Scale1To100000;
     }
 
     private void ExportMultiPagePdf(IReadOnlyList<TileData> tiles, int zoom, MapGeneratorOptions options)
@@ -361,6 +427,9 @@ public class MapGenerator : IDisposable
         // Render each sheet individually to avoid memory issues
         using var renderer = new BaseMapRenderer(new MapRenderOptions { Dpi = options.Dpi });
 
+        // Pre-render scale bar for all sheets
+        var scaleBarResult = RenderScaleBar(options);
+
         foreach (var sheet in layout.Sheets)
         {
             // Filter tiles that overlap with this sheet's bounds
@@ -376,18 +445,31 @@ public class MapGenerator : IDisposable
                     sheet.MaxLon,
                     zoom);
 
-                sheet.MapImage = SKBitmap.Decode(sheetImageBytes);
+                using var rawBitmap = SKBitmap.Decode(sheetImageBytes);
+
+                // Apply MGRS grid overlay to each sheet
+                var sheetOptions = new MapGeneratorOptions
+                {
+                    Bounds = new BoundingBox(sheet.MinLat, sheet.MaxLat, sheet.MinLon, sheet.MaxLon),
+                    Scale = options.Scale,
+                    Dpi = options.Dpi
+                };
+                sheet.MapImage = ApplyMgrsGrid(rawBitmap, sheetOptions);
+                sheet.ScaleBarImage = scaleBarResult.Bitmap;
             }
         }
 
         // Export the multi-page PDF
         multiExporter.Export(layout, options.OutputPath);
 
-        // Clean up sheet images
+        // Clean up sheet images (don't dispose ScaleBarImage since it's shared)
         foreach (var sheet in layout.Sheets)
         {
             sheet.MapImage?.Dispose();
+            sheet.ScaleBarImage = null;
         }
+
+        scaleBarResult.Bitmap.Dispose();
     }
 
     private static bool TileOverlapsSheet(TileData tile, MapSheet sheet, int zoom)

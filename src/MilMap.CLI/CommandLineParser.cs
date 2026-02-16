@@ -703,7 +703,10 @@ Examples:
                     _ => MapOutputFormat.Pdf
                 },
                 Title = regionDescription,
-                CacheDirectory = options.CacheDir
+                CacheDirectory = options.CacheDir,
+                MultiPage = options.MultiPage,
+                PageSize = ParsePageSize(options.PageSize),
+                Orientation = ParseOrientation(options.Orientation)
             };
 
             var progress = ConsoleProgress.ForSteps();
