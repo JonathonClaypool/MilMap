@@ -1276,10 +1276,10 @@
       "branch": "Army",
       "state": "MN",
       "boundingBox": {
-        "minLat": 46.0300,
-        "maxLat": 46.2200,
-        "minLon": -94.4300,
-        "maxLon": -94.2500
+        "minLat": 46.0700,
+        "maxLat": 46.3350,
+        "minLon": -94.5000,
+        "maxLon": -94.3300
       }
     }
   ]

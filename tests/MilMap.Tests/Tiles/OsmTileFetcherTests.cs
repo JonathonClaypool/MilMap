@@ -93,7 +93,7 @@ public class OsmTileFetcherTests
 
         Assert.Contains("basemap.nationalmap.gov", options.TileServerUrl);
         Assert.Equal(4, options.MaxConcurrency);
-        Assert.Equal(3, options.MaxRetries);
+        Assert.Equal(5, options.MaxRetries);
         Assert.NotEmpty(options.UserAgent);
     }
 

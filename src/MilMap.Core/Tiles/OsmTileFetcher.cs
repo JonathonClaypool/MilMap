@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using MilMap.Core.Progress;
+using SkiaSharp;
 
 namespace MilMap.Core.Tiles;
 
@@ -52,17 +53,23 @@ public class TileFetcherOptions
     /// <summary>
     /// Number of retry attempts for failed downloads.
     /// </summary>
-    public int MaxRetries { get; set; } = 3;
+    public int MaxRetries { get; set; } = 5;
 
     /// <summary>
     /// Delay between retry attempts in milliseconds.
     /// </summary>
-    public int RetryDelayMs { get; set; } = 1000;
+    public int RetryDelayMs { get; set; } = 1500;
 
     /// <summary>
     /// Request timeout in seconds.
     /// </summary>
     public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Maximum zoom level supported by the tile server.
+    /// USGS National Map supports up to zoom 16. OSM supports up to 18.
+    /// </summary>
+    public int MaxZoom { get; set; } = 16;
 }
 
 /// <summary>
@@ -170,18 +177,25 @@ public class OsmTileFetcher : IDisposable
                 if (result != null)
                 {
                     tiles.Add(result);
-                    int current = Interlocked.Increment(ref downloadedCount);
-                    progress?.Report(new TileDownloadProgress
-                    {
-                        Downloaded = current,
-                        FromCache = 0,
-                        Total = coordinates.Count,
-                        Failed = Volatile.Read(ref failedCount)
-                    });
                 }
+                else
+                {
+                    // Tile doesn't exist (404) — generate a placeholder to avoid white gaps
+                    tiles.Add(CreatePlaceholderTile(coord.X, coord.Y, zoom));
+                }
+                int current = Interlocked.Increment(ref downloadedCount);
+                progress?.Report(new TileDownloadProgress
+                {
+                    Downloaded = current,
+                    FromCache = 0,
+                    Total = coordinates.Count,
+                    Failed = Volatile.Read(ref failedCount)
+                });
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Generate placeholder tile for failed downloads too
+                tiles.Add(CreatePlaceholderTile(coord.X, coord.Y, zoom));
                 errors.Add(new TileFetchError(coord.X, coord.Y, zoom, ex.Message));
                 int failed = Interlocked.Increment(ref failedCount);
                 progress?.Report(new TileDownloadProgress
@@ -215,6 +229,11 @@ public class OsmTileFetcher : IDisposable
         string url = BuildTileUrl(x, y, zoom);
 
         var response = await _httpClient.GetAsync(url, cancellationToken);
+
+        // Return null for 404s (tile doesn't exist at this zoom level)
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
         response.EnsureSuccessStatusCode();
 
         byte[] imageData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
@@ -237,7 +256,9 @@ public class OsmTileFetcher : IDisposable
                 lastException = ex;
                 if (attempt < _options.MaxRetries)
                 {
-                    await Task.Delay(_options.RetryDelayMs * (attempt + 1), cancellationToken);
+                    // Exponential backoff: 1.5s, 3s, 6s, 12s, 24s
+                    int delay = _options.RetryDelayMs * (1 << attempt);
+                    await Task.Delay(delay, cancellationToken);
                 }
             }
         }
@@ -292,6 +313,23 @@ public class OsmTileFetcher : IDisposable
         if (y < 0 || y > maxTile)
             throw new ArgumentOutOfRangeException(nameof(y), $"Y coordinate must be between 0 and {maxTile} for zoom {zoom}");
     }
+
+    /// <summary>
+    /// Creates a neutral-colored placeholder tile for missing/failed tiles
+    /// to prevent white gaps in the rendered map.
+    /// </summary>
+    private static TileData CreatePlaceholderTile(int x, int y, int zoom)
+    {
+        using var bitmap = new SKBitmap(TileSize, TileSize);
+        using var canvas = new SKCanvas(bitmap);
+        // Use a light neutral gray that blends with topo map backgrounds
+        canvas.Clear(new SKColor(246, 246, 246));
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 80);
+        return new TileData(x, y, zoom, data.ToArray());
+    }
+
+    private const int TileSize = 256;
 
     public void Dispose()
     {

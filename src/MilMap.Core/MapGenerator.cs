@@ -98,19 +98,21 @@ public record MapGeneratorResult(
 public class MapGenerator : IDisposable
 {
     private readonly TileCache _tileCache;
+    private readonly TileFetcherOptions _fetcherOptions;
     private bool _disposed;
 
     public MapGenerator() : this(null) { }
 
     public MapGenerator(string? cacheDirectory)
     {
+        _fetcherOptions = new TileFetcherOptions();
         var cacheOptions = new TileCacheOptions();
         if (!string.IsNullOrEmpty(cacheDirectory))
         {
             cacheOptions.CacheDirectory = cacheDirectory;
         }
 
-        _tileCache = new TileCache(new OsmTileFetcher(), cacheOptions);
+        _tileCache = new TileCache(new OsmTileFetcher(_fetcherOptions), cacheOptions);
     }
 
     /// <summary>
@@ -139,6 +141,19 @@ public class MapGenerator : IDisposable
                 options.Scale,
                 options.Dpi,
                 options.Bounds.CenterLat);
+
+            // Cap zoom level to tile server's maximum supported zoom
+            int effectiveZoom = Math.Min(zoomResult.Zoom, _fetcherOptions.MaxZoom);
+            if (effectiveZoom < zoomResult.Zoom)
+            {
+                Console.WriteLine($"  Note: Capped zoom from {zoomResult.Zoom} to {effectiveZoom} (tile server max)");
+                zoomResult = ZoomLevelCalculator.CalculateZoom(
+                    (int)ZoomLevelCalculator.CalculateActualScale(
+                        ZoomLevelCalculator.GetMetersPerPixel(effectiveZoom, options.Bounds.CenterLat),
+                        options.Dpi),
+                    options.Dpi,
+                    options.Bounds.CenterLat);
+            }
 
             if (zoomResult.Warning != null)
             {
