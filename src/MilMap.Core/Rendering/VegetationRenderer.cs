@@ -80,18 +80,37 @@ out geom;";
 
         foreach (var element in result.Response.Elements)
         {
-            if (element.Geometry == null || element.Geometry.Length < 3) continue;
-
             var featureType = ClassifyFeature(element);
             if (featureType == VegetationType.Unknown) continue;
 
-            features.Add(new VegetationFeature
+            if (element.Type == "way" && element.Geometry != null && element.Geometry.Length >= 3)
             {
-                Type = featureType,
-                Points = element.Geometry
-                    .Select(p => new GeoPoint(p.Lat, p.Lon))
-                    .ToList()
-            });
+                // Simple way with inline geometry
+                features.Add(new VegetationFeature
+                {
+                    Type = featureType,
+                    Points = element.Geometry
+                        .Select(p => new GeoPoint(p.Lat, p.Lon))
+                        .ToList()
+                });
+            }
+            else if (element.Type == "relation" && element.Members != null)
+            {
+                // Multipolygon relation — extract outer member geometries
+                foreach (var member in element.Members)
+                {
+                    if (member.Role == "outer" && member.Geometry != null && member.Geometry.Length >= 3)
+                    {
+                        features.Add(new VegetationFeature
+                        {
+                            Type = featureType,
+                            Points = member.Geometry
+                                .Select(p => new GeoPoint(p.Lat, p.Lon))
+                                .ToList()
+                        });
+                    }
+                }
+            }
         }
 
         return features;

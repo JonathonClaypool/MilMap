@@ -30,6 +30,27 @@ public record OsmElement
 
     [JsonPropertyName("geometry")]
     public OsmGeometryPoint[]? Geometry { get; init; }
+
+    [JsonPropertyName("members")]
+    public OsmMember[]? Members { get; init; }
+}
+
+/// <summary>
+/// Represents a member of an OSM relation.
+/// </summary>
+public record OsmMember
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = string.Empty;
+
+    [JsonPropertyName("ref")]
+    public long Ref { get; init; }
+
+    [JsonPropertyName("role")]
+    public string Role { get; init; } = string.Empty;
+
+    [JsonPropertyName("geometry")]
+    public OsmGeometryPoint[]? Geometry { get; init; }
 }
 
 /// <summary>

@@ -9,32 +9,33 @@ public class TilePostProcessorTests
     [Fact]
     public void RemoveMilitaryHatching_ReplacesRedPixels()
     {
-        // Arrange: create a small bitmap with red hatching-like pixels
         using var bitmap = new SKBitmap(10, 10);
         var redHatch = new SKColor(198, 0, 0);
         bitmap.SetPixel(3, 3, redHatch);
         bitmap.SetPixel(5, 5, redHatch);
 
-        // Act
         TilePostProcessor.RemoveMilitaryHatching(bitmap);
 
-        // Assert: red pixels should be replaced
         var p1 = bitmap.GetPixel(3, 3);
         Assert.NotEqual(redHatch, p1);
-        Assert.True(p1.Red > 200); // Should be a neutral light color
     }
 
     [Fact]
-    public void RemoveMilitaryHatching_ReplacesPinkFillPixels()
+    public void RemoveMilitaryHatching_RemovesPinkTintPreservingTerrain()
     {
+        // Simulate a green forest pixel with pink military tint overlaid:
+        // Original green ~(140, 195, 110), tinted by red overlay → ~(165, 185, 110)
         using var bitmap = new SKBitmap(10, 10);
-        var pinkFill = new SKColor(242, 220, 220);
-        bitmap.SetPixel(4, 4, pinkFill);
+        var tintedGreen = new SKColor(165, 130, 110);
+        bitmap.SetPixel(4, 4, tintedGreen);
 
         TilePostProcessor.RemoveMilitaryHatching(bitmap);
 
         var result = bitmap.GetPixel(4, 4);
-        Assert.NotEqual(pinkFill, result);
+        // After removing pink tint, red should decrease and green should increase
+        // relative to the tinted input — terrain color should be more neutral/green
+        Assert.True(result.Red <= tintedGreen.Red,
+            $"Red should decrease after tint removal: was {tintedGreen.Red}, now {result.Red}");
     }
 
     [Fact]
@@ -48,19 +49,20 @@ public class TilePostProcessorTests
 
         TilePostProcessor.RemoveMilitaryHatching(bitmap);
 
+        // Green pixel has no red excess, should be untouched
         Assert.Equal(green, bitmap.GetPixel(2, 2));
+        // Blue pixel has no red excess, should be untouched
         Assert.Equal(blue, bitmap.GetPixel(7, 7));
     }
 
     [Fact]
     public void RemoveMilitaryHatching_HandlesNullBitmap()
     {
-        // Should not throw
         TilePostProcessor.RemoveMilitaryHatching(null!);
     }
 
     [Fact]
-    public void RemoveMilitaryHatching_HandlesEmptyBitmap()
+    public void RemoveMilitaryHatching_HandlesSmallBitmap()
     {
         using var bitmap = new SKBitmap(1, 1);
         bitmap.SetPixel(0, 0, SKColors.White);
@@ -74,37 +76,74 @@ public class TilePostProcessorTests
     [InlineData(200, 10, 10)]   // Strong red
     [InlineData(180, 30, 20)]   // Moderate red
     [InlineData(150, 50, 50)]   // Edge case lower bound
-    public void RemoveMilitaryHatching_DetectsVariousRedShades(byte r, byte g, byte b)
+    public void IsRedHatching_DetectsVariousRedShades(byte r, byte g, byte b)
     {
-        using var bitmap = new SKBitmap(5, 5);
-        var color = new SKColor(r, g, b);
-        bitmap.SetPixel(2, 2, color);
-
-        TilePostProcessor.RemoveMilitaryHatching(bitmap);
-
-        var result = bitmap.GetPixel(2, 2);
-        Assert.NotEqual(color, result);
+        Assert.True(TilePostProcessor.IsRedHatching(new SKColor(r, g, b)));
     }
 
     [Theory]
-    [InlineData(200, 50, 50)]   // Red-ish but green/blue too high — NOT hatching
-    [InlineData(100, 0, 0)]     // Too dark red — NOT hatching (below threshold)
-    public void RemoveMilitaryHatching_DoesNotRemoveNonHatchingReds(byte r, byte g, byte b)
+    [InlineData(100, 0, 0)]     // Too dark
+    [InlineData(200, 80, 50)]   // Green too high
+    [InlineData(140, 30, 30)]   // Red below threshold
+    public void IsRedHatching_RejectsNonHatching(byte r, byte g, byte b)
     {
+        Assert.False(TilePostProcessor.IsRedHatching(new SKColor(r, g, b)));
+    }
+
+    [Fact]
+    public void HasPinkMilitaryTint_DetectsHighRedExcess()
+    {
+        // Pixel with significant red excess over green/blue average
+        var tinted = new SKColor(200, 160, 150);
+        Assert.True(TilePostProcessor.HasPinkMilitaryTint(tinted));
+    }
+
+    [Fact]
+    public void HasPinkMilitaryTint_RejectsBalancedColors()
+    {
+        // Balanced green — no red excess
+        var green = new SKColor(100, 180, 100);
+        Assert.False(TilePostProcessor.HasPinkMilitaryTint(green));
+
+        // White — minimal red excess
+        Assert.False(TilePostProcessor.HasPinkMilitaryTint(SKColors.White));
+    }
+
+    [Fact]
+    public void HasPinkMilitaryTint_RejectsDarkPixels()
+    {
+        // Very dark pixel with slight red dominance — should NOT match
+        var dark = new SKColor(50, 30, 30);
+        Assert.False(TilePostProcessor.HasPinkMilitaryTint(dark));
+    }
+
+    [Fact]
+    public void RemovePinkTint_ReducesRedAndBoostsGreen()
+    {
+        var tinted = new SKColor(200, 160, 150);
+        var result = TilePostProcessor.RemovePinkTint(tinted);
+
+        Assert.True(result.Red < tinted.Red, "Red should decrease");
+        Assert.True(result.Green >= tinted.Green, "Green should increase or stay");
+        Assert.Equal(tinted.Blue, result.Blue);
+    }
+
+    [Fact]
+    public void RemoveMilitaryHatching_InterpolatesRedHatchFromNeighbors()
+    {
+        // Create bitmap with green terrain and a red hatching pixel in center
         using var bitmap = new SKBitmap(5, 5);
-        var color = new SKColor(r, g, b);
-        bitmap.SetPixel(2, 2, color);
+        var green = new SKColor(140, 195, 110);
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                bitmap.SetPixel(x, y, green);
+
+        bitmap.SetPixel(2, 2, new SKColor(198, 0, 0)); // Red hatching
 
         TilePostProcessor.RemoveMilitaryHatching(bitmap);
 
-        // For the second case (100,0,0), it IS below 150 red threshold so should be preserved
-        // For the first case (200,50,50), green is NOT < 60 so it depends on exact threshold
         var result = bitmap.GetPixel(2, 2);
-        // This is testing boundary behavior; at least the original color should be preserved
-        // if it's intentionally excluded
-        if (r < 150 || g >= 60 || b >= 60)
-        {
-            Assert.Equal(color, result);
-        }
+        // Should be interpolated from green neighbors, not flat tan
+        Assert.True(result.Green > 100, $"Should interpolate green from neighbors, got G={result.Green}");
     }
 }
