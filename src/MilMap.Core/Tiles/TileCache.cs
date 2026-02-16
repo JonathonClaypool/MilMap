@@ -38,11 +38,14 @@ public class TileCacheOptions
 
 /// <summary>
 /// Provides local file-based caching for map tiles.
+/// Cache is namespaced by tile server URL to prevent serving stale tiles
+/// from a different server.
 /// </summary>
 public class TileCache : IDisposable
 {
     private readonly OsmTileFetcher _fetcher;
     private readonly TileCacheOptions _options;
+    private readonly string _serverCacheDir;
     private readonly SemaphoreSlim _cleanupLock = new(1, 1);
     private bool _disposed;
 
@@ -58,6 +61,11 @@ public class TileCache : IDisposable
     {
         _fetcher = fetcher ?? throw new ArgumentNullException(nameof(fetcher));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+
+        // Namespace cache by tile server to avoid serving stale tiles after server switch
+        string serverKey = ComputeServerKey(fetcher.TileServerUrl);
+        _serverCacheDir = Path.Combine(_options.CacheDirectory, serverKey);
+
         EnsureCacheDirectoryExists();
     }
 
@@ -321,13 +329,36 @@ public class TileCache : IDisposable
 
     private string GetTilePath(int x, int y, int zoom)
     {
-        // Organize by zoom/x/y.png
-        return Path.Combine(_options.CacheDirectory, zoom.ToString(), x.ToString(), $"{y}.png");
+        // Organize by serverKey/zoom/x/y.png
+        return Path.Combine(_serverCacheDir, zoom.ToString(), x.ToString(), $"{y}.png");
     }
 
     private void EnsureCacheDirectoryExists()
     {
-        Directory.CreateDirectory(_options.CacheDirectory);
+        Directory.CreateDirectory(_serverCacheDir);
+    }
+
+    /// <summary>
+    /// Computes a short directory-safe key from a tile server URL.
+    /// </summary>
+    private static string ComputeServerKey(string tileServerUrl)
+    {
+        // Extract host from URL for readability, append hash for uniqueness
+        try
+        {
+            var uri = new Uri(tileServerUrl
+                .Replace("{z}", "0").Replace("{x}", "0").Replace("{y}", "0"));
+            string host = uri.Host.Replace(".", "_");
+            // Use first 8 chars of SHA256 hash for collision avoidance
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(tileServerUrl));
+            string hashStr = Convert.ToHexString(hash)[..8].ToLowerInvariant();
+            return $"{host}_{hashStr}";
+        }
+        catch
+        {
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(tileServerUrl));
+            return Convert.ToHexString(hash)[..16].ToLowerInvariant();
+        }
     }
 
     public void Dispose()

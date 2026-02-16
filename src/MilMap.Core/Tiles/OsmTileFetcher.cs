@@ -30,11 +30,13 @@ public record TileFetchError(int X, int Y, int Zoom, string ErrorMessage);
 public class TileFetcherOptions
 {
     /// <summary>
-    /// Base URL for the tile server. Default is OpenTopoMap for topographic rendering
-    /// with contour lines and terrain shading.
+    /// Base URL for the tile server. Default is USGS National Map Topo which provides
+    /// detailed topographic maps with vegetation cover, contour lines, water features,
+    /// and no military installation hatching/overlay.
     /// Use {z}, {x}, {y} placeholders for tile coordinates.
+    /// Note: USGS tile URL uses {z}/{y}/{x} order (ArcGIS REST convention).
     /// </summary>
-    public string TileServerUrl { get; set; } = "https://tile.opentopomap.org/{z}/{x}/{y}.png";
+    public string TileServerUrl { get; set; } = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}";
 
     /// <summary>
     /// User-Agent header for requests. Required by tile server usage policies.
@@ -42,9 +44,10 @@ public class TileFetcherOptions
     public string UserAgent { get; set; } = "MilMap/1.0 (military-map-generator; https://github.com/milmap/milmap)";
 
     /// <summary>
-    /// Maximum concurrent downloads. Default is 2 per OSM policy.
+    /// Maximum concurrent downloads. Default is 4 for USGS servers.
+    /// Reduce to 2 if using OSM tile servers per their usage policy.
     /// </summary>
-    public int MaxConcurrency { get; set; } = 2;
+    public int MaxConcurrency { get; set; } = 4;
 
     /// <summary>
     /// Number of retry attempts for failed downloads.
@@ -70,6 +73,11 @@ public class OsmTileFetcher : IDisposable
     private readonly HttpClient _httpClient;
     private readonly TileFetcherOptions _options;
     private bool _disposed;
+
+    /// <summary>
+    /// The configured tile server URL template.
+    /// </summary>
+    public string TileServerUrl => _options.TileServerUrl;
 
     public OsmTileFetcher() : this(new TileFetcherOptions()) { }
 
