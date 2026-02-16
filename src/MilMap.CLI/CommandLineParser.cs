@@ -285,6 +285,9 @@ Examples:
             var pageSize = ParsePageSize(options.PageSize);
             var orientation = ParseOrientation(options.Orientation);
 
+            // Ensure output file extension matches the chosen format
+            options.OutputPath = CorrectFileExtension(options.OutputPath, options.Format);
+
             // Generate the map
             var generatorOptions = new MapGeneratorOptions
             {
@@ -682,6 +685,10 @@ Examples:
             }
 
             Console.WriteLine();
+
+            // Ensure output file extension matches the chosen format
+            options.OutputPath = CorrectFileExtension(options.OutputPath, options.Format);
+
             Console.WriteLine($"Generating map: {options.OutputPath}");
             Console.WriteLine($"  Region: {regionDescription}");
             Console.WriteLine($"  Scale: 1:{options.Scale}");
@@ -773,5 +780,26 @@ Examples:
             "landscape" => PageOrientation.Landscape,
             _ => PageOrientation.Landscape
         };
+    }
+
+    /// <summary>
+    /// Ensures the output file extension matches the chosen format.
+    /// </summary>
+    private static string CorrectFileExtension(string outputPath, OutputFormat format)
+    {
+        var expectedExtension = format switch
+        {
+            OutputFormat.Png => ".png",
+            OutputFormat.GeoTiff => ".tif",
+            _ => ".pdf"
+        };
+
+        var currentExtension = Path.GetExtension(outputPath);
+        if (!currentExtension.Equals(expectedExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.ChangeExtension(outputPath, expectedExtension);
+        }
+
+        return outputPath;
     }
 }

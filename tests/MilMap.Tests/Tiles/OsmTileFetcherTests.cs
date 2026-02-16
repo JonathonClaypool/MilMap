@@ -91,7 +91,7 @@ public class OsmTileFetcherTests
     {
         var options = new TileFetcherOptions();
 
-        Assert.Contains("openstreetmap.org", options.TileServerUrl);
+        Assert.Contains("opentopomap.org", options.TileServerUrl);
         Assert.Equal(2, options.MaxConcurrency);
         Assert.Equal(3, options.MaxRetries);
         Assert.NotEmpty(options.UserAgent);

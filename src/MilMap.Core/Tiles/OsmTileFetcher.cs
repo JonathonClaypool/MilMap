@@ -30,15 +30,16 @@ public record TileFetchError(int X, int Y, int Zoom, string ErrorMessage);
 public class TileFetcherOptions
 {
     /// <summary>
-    /// Base URL for the tile server. Default is OpenStreetMap.
+    /// Base URL for the tile server. Default is OpenTopoMap for topographic rendering
+    /// with contour lines and terrain shading.
     /// Use {z}, {x}, {y} placeholders for tile coordinates.
     /// </summary>
-    public string TileServerUrl { get; set; } = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+    public string TileServerUrl { get; set; } = "https://tile.opentopomap.org/{z}/{x}/{y}.png";
 
     /// <summary>
-    /// User-Agent header for requests. Required by OSM tile usage policy.
+    /// User-Agent header for requests. Required by tile server usage policies.
     /// </summary>
-    public string UserAgent { get; set; } = "MilMap/1.0 (https://github.com/milmap/milmap)";
+    public string UserAgent { get; set; } = "MilMap/1.0 (military-map-generator; https://github.com/milmap/milmap)";
 
     /// <summary>
     /// Maximum concurrent downloads. Default is 2 per OSM policy.

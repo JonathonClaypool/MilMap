@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MilMap.Core.Elevation;
 using MilMap.Core.Export;
 using MilMap.Core.Input;
 using MilMap.Core.Mgrs;
@@ -239,7 +240,7 @@ public class MapGenerator : IDisposable
             if (useMultiPage && options.Format == MapOutputFormat.Pdf)
             {
                 // Multi-page mode: render each sheet separately to avoid memory issues
-                ExportMultiPagePdf(tileResult.Tiles, zoomResult.Zoom, options);
+                await ExportMultiPagePdfAsync(tileResult.Tiles, zoomResult.Zoom, options, cancellationToken);
             }
             else
             {
@@ -255,8 +256,11 @@ public class MapGenerator : IDisposable
 
                 using var mapBitmap = SKBitmap.Decode(mapImageBytes);
 
+                // Apply contour lines from elevation data
+                using var contourBitmap = await ApplyContoursAsync(mapBitmap, options, cancellationToken);
+
                 // Apply MGRS grid overlay
-                using var gridBitmap = ApplyMgrsGrid(mapBitmap, options);
+                using var gridBitmap = ApplyMgrsGrid(contourBitmap, options);
 
                 // Render scale bar
                 var scaleBarResult = RenderScaleBar(options);
@@ -417,7 +421,47 @@ public class MapGenerator : IDisposable
         return MapScale.Scale1To100000;
     }
 
-    private void ExportMultiPagePdf(IReadOnlyList<TileData> tiles, int zoom, MapGeneratorOptions options)
+    /// <summary>
+    /// Fetches elevation data and draws contour lines on the map.
+    /// Falls back gracefully to the unmodified bitmap if elevation data is unavailable.
+    /// </summary>
+    private static async Task<SKBitmap> ApplyContoursAsync(
+        SKBitmap baseBitmap, MapGeneratorOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Determine grid resolution based on image size (one sample per ~4 pixels for smooth contours)
+            int gridCols = Math.Max(2, baseBitmap.Width / 4);
+            int gridRows = Math.Max(2, baseBitmap.Height / 4);
+
+            // Cap to reasonable limits to avoid excessive download time
+            gridCols = Math.Min(gridCols, 1200);
+            gridRows = Math.Min(gridRows, 1200);
+
+            using var elevationSource = new SrtmElevationSource();
+            var elevationGrid = await elevationSource.GetElevationGridAsync(
+                options.Bounds.MinLat, options.Bounds.MaxLat,
+                options.Bounds.MinLon, options.Bounds.MaxLon,
+                gridRows, gridCols, cancellationToken);
+
+            var contourOptions = new ContourOptions
+            {
+                Scale = ScaleToMapScale(options.Scale),
+                ShowLabels = true,
+                SmoothContours = true
+            };
+
+            var contourRenderer = new ContourRenderer(contourOptions);
+            return contourRenderer.DrawContours(baseBitmap, elevationGrid);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Warning: Could not load elevation data for contours: {ex.Message}");
+            return baseBitmap.Copy();
+        }
+    }
+
+    private async Task ExportMultiPagePdfAsync(IReadOnlyList<TileData> tiles, int zoom, MapGeneratorOptions options, CancellationToken cancellationToken)
     {
         var multiPageOptions = new MultiPagePdfOptions
         {
@@ -464,14 +508,17 @@ public class MapGenerator : IDisposable
 
                 using var rawBitmap = SKBitmap.Decode(sheetImageBytes);
 
-                // Apply MGRS grid overlay to each sheet
+                // Apply contour lines to each sheet
                 var sheetOptions = new MapGeneratorOptions
                 {
                     Bounds = new BoundingBox(sheet.MinLat, sheet.MaxLat, sheet.MinLon, sheet.MaxLon),
                     Scale = options.Scale,
                     Dpi = options.Dpi
                 };
-                sheet.MapImage = ApplyMgrsGrid(rawBitmap, sheetOptions);
+                using var contourBitmap = await ApplyContoursAsync(rawBitmap, sheetOptions, cancellationToken);
+
+                // Apply MGRS grid overlay to each sheet
+                sheet.MapImage = ApplyMgrsGrid(contourBitmap, sheetOptions);
                 sheet.ScaleBarImage = scaleBarResult.Bitmap;
             }
         }
